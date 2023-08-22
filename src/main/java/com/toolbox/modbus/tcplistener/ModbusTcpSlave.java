@@ -13,6 +13,7 @@ import net.wimpi.modbus.procimg.SimpleInputRegister;
 import java.net.InetAddress;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "modbus.dummy", name = "enabled", havingValue = "true")
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 //Add conditional on property to enable/disable this bean.
@@ -61,7 +63,7 @@ public class ModbusTcpSlave {
        //Register[] registers = modbusService.stringToRegisterArray(variable1);
         
        // Add holding registers
-        for (int i = 0; i <  40000; i++) {
+        for (int i = 0; i <  endingAddress; i++) {
                 spi.addRegister(new SimpleInputRegister((byte)0,(byte) 0)); // Adding 10 holding registers with initial value 0
         }
 

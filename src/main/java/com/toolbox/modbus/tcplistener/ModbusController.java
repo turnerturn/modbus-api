@@ -34,3 +34,17 @@ public class ModbusController {
         return modbusService.writeRegisters(id,dto);
     }
 }
+//{offset,count,expression}
+/** ConsoleMessageDecorator
+    variables.forEach(v -> {
+        String scrapedValue = xmlScraper.scrape(xml,v.getExpression());
+        var consoleMessage = new ConsoleMessage(...,scrapedValue);
+        message.getConsoleMessages().getConsoleMessage().add(consoleMessage);
+*/
+
+//InitializeTouchscreenContext writes each of the console messages to their respective register.
+//WaitConsoleButtonClicks waits for next button event.
+//ProcessNextPageOfOptions
+//ProcessPreviousPageOfOptions
+//ProcessAbortEvent
+//ProcessManualEntryEvent
