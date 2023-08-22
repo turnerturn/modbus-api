@@ -4,43 +4,77 @@ import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.ModbusCoupler;
 import net.wimpi.modbus.net.ModbusTCPListener;
 import net.wimpi.modbus.procimg.SimpleProcessImage;
-import net.wimpi.modbus.procimg.SimpleRegister;
-import net.wimpi.modbus.procimg.Register;
-import net.wimpi.modbus.procimg.SimpleDigitalIn;
 import net.wimpi.modbus.procimg.SimpleDigitalOut;
+import net.wimpi.modbus.procimg.SimpleDigitalIn;
+import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.procimg.SimpleInputRegister;
 
-public class ModbusTcpListener {
+import java.net.InetAddress;
 
-  public static void main(String[] args) {
-    try {
-      // Prepare a process image
-      SimpleProcessImage spi = new SimpleProcessImage();
-          // Coils are represented with the DigitalOut registers.
-        //Add a coil for each of our interface buttons.  
-        //This coil should be set to true when the associated button is clicked on our interface.
-       //This coil should be set to false after the button event is acknowledged by our modbus master.
-        spi.addDigitalOut(new SimpleDigitalOut(true));
-        //DigitalIn
-      spi.addDigitalIn(new SimpleDigitalIn(false));
-      spi.addRegister(new SimpleRegister(251));
-      spi.addInputRegister(new SimpleInputRegister(45));
-    // Add a coil register
+import org.springframework.stereotype.Component;
 
-      // Set the image on the coupler
-      ModbusCoupler.getReference().setProcessImage(spi);
-      ModbusCoupler.getReference().setMaster(false);
-      ModbusCoupler.getReference().setUnitID(15);
 
-      // Create a listener with 3 threads
-      ModbusTCPListener listener = new ModbusTCPListener(3);
-      listener.setPort(Modbus.DEFAULT_PORT);
-      listener.start();
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 
-      System.out.println("Modbus TCP Listener started...");
+/**
+ * A Modbus TCP Server demonstrating how to set up a listener and define a process image.
+ *
+ * Modbus Register Types:
+ *  - Coils (Digital Outputs): Readable and writable single-bit values, usually representing physical outputs. Accessed using Modbus function codes 1 (read) and 5/15 (write).
+ *  - Discrete Inputs (Digital Inputs): Read-only single-bit values, often representing the state of physical inputs like sensors. Accessed using Modbus function code 2 (read).
+ *  - Holding Registers: Readable and writable 16-bit values, used for various data storage purposes. Accessed using Modbus function codes 3 (read) and 6/16 (write).
+ *  - Input Registers: Read-only 16-bit values, often representing analog inputs. Accessed using Modbus function code 4 (read).
+ */
+@Slf4j
+@Component
+//Add conditional on property to enable/disable this bean.
+public class ModbusTCPServer {
+  private  ModbusTCPListener listener ;
+  private String address = "127.0.0.1";
+  private int port = 9000;//Modbus.DEFAULT_PORT; (default port = 502)
+  public ModbusTCPServer(){
 
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+  }
+  @PostConstruct
+  public void init() throws Exception{
+            log.trace("init()");
+                  // Create a listener with 10 threads
+          listener = new ModbusTCPListener(10);
+
+          // Prepare a process image
+          SimpleProcessImage spi = new SimpleProcessImage();
+          //see description of register in class level javadoc comments.
+          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 1
+          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 2
+          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 3 
+          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 4 
+          spi.addRegister(new SimpleRegister(251));      // Holding Register to save memory for string variable 1.
+         // spi.addDigitalIn(new SimpleDigitalIn(false));  // Discrete Input
+         // spi.addInputRegister(new SimpleInputRegister(45)); // Input Register  
+    
+          // Set the image on the coupler
+          ModbusCoupler.getReference().setProcessImage(spi);
+          ModbusCoupler.getReference().setMaster(false);
+          ModbusCoupler.getReference().setUnitID(15);
+    
+          listener.setAddress(InetAddress.getByName(this.address));
+          listener.setPort(this.port);
+          listener.start();
+          log.info("Modbus TCP Listener started... Address: {} Port: {}",this.address,this.port);
+  }
+  @PreDestroy
+  private void destory(){
+    log.trace("destroy()");
+        stopListener();
+  }
+  private void stopListener(){
+        log.trace("stopListener()");
+        try{
+                listener.stop();
+        }catch(Exception e){
+                log.error("Failed to stop Modbus TCP Listener. ",e);
+        }
   }
 }
