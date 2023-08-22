@@ -41,7 +41,7 @@ public class ModbusServiceImpl implements ModbusService {
      * Validates value can be written into the capacity of registers
      */
     @Value("${modbus.address:127.0.0.1}")
-    private String ipAddress;// "192.168.1.197"; // Modbus device IP address
+    private String address;// "192.168.1.197"; // Modbus device IP address
     @Value("${modbus.port:502}")//Modbus.DEFAULT_PORT = 502
     private Integer port;
 
@@ -74,14 +74,14 @@ public class ModbusServiceImpl implements ModbusService {
     }
 
     public boolean readCoil(Integer coilAddress) throws Exception {
-        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(ipAddress, port)) {
+        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
             return master.readCoils(coilAddress, 1).getBit(0);
         }
     }
 
     public boolean writeCoil(Integer unitId, Integer coilAddress, Boolean value) throws Exception {
-        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(ipAddress, port)) {
+        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
             master.writeCoil(unitId, coilAddress, value);
             return readCoil(coilAddress);
@@ -89,7 +89,7 @@ public class ModbusServiceImpl implements ModbusService {
     }
 
     public RegisterDto readRegisters(Integer startingAddress, Integer count) throws Exception {
-        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(ipAddress, port)) {
+        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
   
             Register[] registers = master.readMultipleRegisters(startingAddress, count);
@@ -112,7 +112,7 @@ public class ModbusServiceImpl implements ModbusService {
         Objects.requireNonNull(dto.getStartingAddress(), "startingAddress must not be null");
               Objects.requireNonNull(dto.getValue(), "value must not be null");
         
-        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(ipAddress, port)) {
+        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
 
             Integer reference = dto.getStartingAddress(); // Reference of the register to be written

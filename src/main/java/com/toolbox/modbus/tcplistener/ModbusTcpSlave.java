@@ -13,6 +13,7 @@ import net.wimpi.modbus.procimg.SimpleInputRegister;
 import java.net.InetAddress;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -43,9 +44,10 @@ public class ModbusTcpSlave {
   private  ModbusTCPListener listener ;
  @Autowired
  private ModbusService modbusService;
-  private final String address = "127.0.0.1";
-  private final Integer port = 9000;//Modbus.DEFAULT_PORT; (default port = 502)
-
+    @Value("${modbus.address:127.0.0.1}")
+    private String address;// "192.168.1.197"; // Modbus device IP address
+    @Value("${modbus.port:502}")//Modbus.DEFAULT_PORT = 502
+    private Integer port;
   @PostConstruct
   public void init() throws Exception{
             log.trace("init()");
