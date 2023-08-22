@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.AllArgsConstructor;
@@ -39,10 +40,10 @@ public class ModbusServiceImpl implements ModbusService {
      * Validates endingAddress >= startingAddress
      * Validates value can be written into the capacity of registers
      */
-    private String ipAddress = "127.0.0.1";// "192.168.1.197"; // Modbus device IP address
-    private Integer port = 9000;// Modbus.DEFAULT_PORT; // Modbus default port 502
-    private static final Integer BUTTON_1_COIL_ADDRESS = 0;
-    private static final Integer BUTTON_2_COIL_ADDRESS = 0;
+    @Value("${modbus.address:127.0.0.1}")
+    private String ipAddress;// "192.168.1.197"; // Modbus device IP address
+    @Value("${modbus.port:502}")//Modbus.DEFAULT_PORT = 502
+    private Integer port;
 
     public ModbusServiceImpl() {
     }
