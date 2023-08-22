@@ -5,17 +5,22 @@ import net.wimpi.modbus.ModbusCoupler;
 import net.wimpi.modbus.net.ModbusTCPListener;
 import net.wimpi.modbus.procimg.SimpleProcessImage;
 import net.wimpi.modbus.procimg.SimpleDigitalOut;
+import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleDigitalIn;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.procimg.SimpleInputRegister;
 
 import java.net.InetAddress;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -29,14 +34,16 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
+@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 //Add conditional on property to enable/disable this bean.
-public class ModbusTCPServer {
+public class ModbusTcpSlave {
   private  ModbusTCPListener listener ;
-  private String address = "127.0.0.1";
-  private int port = 9000;//Modbus.DEFAULT_PORT; (default port = 502)
-  public ModbusTCPServer(){
+ @Autowired
+ private ModbusService modbusService;
+  private final String address = "127.0.0.1";
+  private final Integer port = 9000;//Modbus.DEFAULT_PORT; (default port = 502)
 
-  }
   @PostConstruct
   public void init() throws Exception{
             log.trace("init()");
@@ -50,10 +57,14 @@ public class ModbusTCPServer {
           spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 2
           spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 3 
           spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 4 
-          spi.addRegister(new SimpleRegister(251));      // Holding Register to save memory for string variable 1.
-         // spi.addDigitalIn(new SimpleDigitalIn(false));  // Discrete Input
-         // spi.addInputRegister(new SimpleInputRegister(45)); // Input Register  
-    
+       int endingAddress = 50000;
+       //Register[] registers = modbusService.stringToRegisterArray(variable1);
+        
+       // Add holding registers
+        for (int i = 0; i <  40000; i++) {
+                spi.addRegister(new SimpleInputRegister((byte)0,(byte) 0)); // Adding 10 holding registers with initial value 0
+        }
+
           // Set the image on the coupler
           ModbusCoupler.getReference().setProcessImage(spi);
           ModbusCoupler.getReference().setMaster(false);
