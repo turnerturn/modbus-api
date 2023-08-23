@@ -72,7 +72,7 @@ public class ModbusTcpSlave {
           // Set the image on the coupler
           ModbusCoupler.getReference().setProcessImage(spi);
           ModbusCoupler.getReference().setMaster(false);
-          ModbusCoupler.getReference().setUnitID(15);
+          ModbusCoupler.getReference().setUnitID(1);
     
           listener.setAddress(InetAddress.getByName(this.address));
           listener.setPort(this.port);

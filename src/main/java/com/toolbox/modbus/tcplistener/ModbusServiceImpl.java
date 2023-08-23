@@ -2,7 +2,6 @@ package com.toolbox.modbus.tcplistener;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -88,11 +87,11 @@ public class ModbusServiceImpl implements ModbusService {
         }
     }
 
-    public String readHoldingRegistersValue(Integer offset, Integer count) throws Exception {
+    public RegisterDto readRegisters(Integer startingAddress, Integer count) throws Exception {
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
 
-            Register[] registers = master.readMultipleRegisters(offset, count);
+            Register[] registers = master.readMultipleRegisters(startingAddress, count);
 
             ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
             for (Integer i = 0; i < count; i++) {
@@ -103,44 +102,46 @@ public class ModbusServiceImpl implements ModbusService {
             String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
             log.info("String was retreived from modbus.  Value: {}", result);
 
-            return result;
+            return new RegisterDto(startingAddress, count, result);
         }
     }
 
-    public void writeHoldingRegistersValue(Integer unitId, Integer offset, Integer count,String value) throws Exception {
-        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
-            master.connect();
-            Objects.requireNonNull(offset, "startingAddress must not be null");
-            Objects.requireNonNull(count, "value must not be null");
+    public void writeValueToRegisterGroup(Integer unitId, Integer offset, Integer count, String value)
+            throws Exception {
 
-            Integer reference = offset; // Reference of the register to be written
-            Register[] valueRegisters = stringToRegisterArray(value);
-            // pad null terminator registers to the right so we can fill the given
-            // allottment of registers.
-            // This removes any old remnants of values that may have previously been
-            // written.
-            // registers = padRight(endingAddress - registers.length, registers,new
-            // SimpleRegister((byte)0, (byte)0));
+        Objects.requireNonNull(offset, "offset must not be null");
+        Objects.requireNonNull(value, "value must not be null");
 
-            assertRegisterGroupCapacity(valueRegisters,count);
-            WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(offset, valueRegisters);
-            request.setUnitID(unitId);
-            WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
-            log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
+        Register[] registers = stringToRegisterArray(value);
+        // pad null terminator registers to the right so we can fill the given
+        // allottment of registers.
+        // This removes any old remnants of values that may have previously been
+        // written.
+        // registers = padRight(endingAddress - registers.length, registers,new
+        // SimpleRegister((byte)0, (byte)0));
 
-        }
+        assertRegisterGroupCapacity(registers, count);
+        // TODO append null terminators to remaining space between endingAddress and
+        // startingAddress;
+        // write the new value to the allotted group of registers
+
+        WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(offset, registers);
+        request.setUnitID(unitId);
+        WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
+        log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
     }
 
-    public void uploadRegisters(Integer unitId, List<RegisterDto> registers) throws Exception {
-        Objects.requireNonNull(registers, "registers must not be null");
+    public void writeRegisterGroups(Integer unitId, List<RegisterDto> registerGroups) throws Exception {
+        Objects.requireNonNull(registerGroups, "registerGroups must not be null");
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
-            for (RegisterDto dto : registers) {
-                Objects.requireNonNull(dto.getOffset(), "startingAddress must not be null");
+            for (RegisterDto dto : registerGroups) {
+
+                Objects.requireNonNull(dto.getStartingAddress(), "startingAddress must not be null");
                 Objects.requireNonNull(dto.getValue(), "value must not be null");
 
-                Integer reference = dto.getOffset(); // Reference of the register to be written
-                Register[] valueRegisters = stringToRegisterArray(dto.getValue());
+                Integer reference = dto.getStartingAddress(); // Reference of the register to be written
+                Register[] registers = stringToRegisterArray(dto.getValue());
                 // pad null terminator registers to the right so we can fill the given
                 // allottment of registers.
                 // This removes any old remnants of values that may have previously been
@@ -148,23 +149,17 @@ public class ModbusServiceImpl implements ModbusService {
                 // registers = padRight(endingAddress - registers.length, registers,new
                 // SimpleRegister((byte)0, (byte)0));
 
-                if (dto.getCount() != null) {
-                    assertRegisterGroupCapacity(valueRegisters, dto.getCount());
-                    // TODO append null terminators to remaining space between endingAddress and
-                    // startingAddress;
-                    // write the new value to the allotted group of registers
-                }
+                assertRegisterGroupCapacity(registers, dto.getCount());
+                // TODO append null terminators to remaining space between endingAddress and
+                // startingAddress;
+                // write the new value to the allotted group of registers
 
-                WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(reference, valueRegisters);
+                WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(reference, registers);
                 request.setUnitID(unitId);
                 WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
                 log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
             }
         }
-    }
-
-    private boolean isCoilRegister(Integer offset) {
-        return offset >= 0 && offset <= 9999;
     }
 
     /**
