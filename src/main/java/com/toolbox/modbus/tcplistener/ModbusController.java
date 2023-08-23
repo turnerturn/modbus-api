@@ -1,5 +1,7 @@
 package com.toolbox.modbus.tcplistener;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,26 +14,17 @@ public class ModbusController {
     @Autowired
     private ModbusService modbusService;
 
-    @GetMapping("/api/modbus/{id}/registers/{startingAddress}/{endingAddress}")
-    public RegisterDto readRegisters(@PathVariable("id") Integer id,
-            @PathVariable("startingAddress") Integer startingAddress,
-            @PathVariable("endingAddress") Integer endingAddress) throws Exception {
-        return modbusService.readRegisters(startingAddress, endingAddress);
+    @GetMapping("/api/modbus/{id}/registers/{offset}/{count}")
+    public String readValueFromRegisters(@PathVariable("id") Integer id,
+            @PathVariable("offset") Integer offset,
+            @PathVariable("count") Integer count) throws Exception {
+        return modbusService.readValueFromRegisters(offset, count);
     }
-
-    @GetMapping("/api/modbus/{id}/coils/{startingAddress}")
-    public boolean readCoil(@PathVariable("id") Integer id, @PathVariable("startingAddress") Integer startingAddress)
-            throws Exception {
-        return modbusService.readCoil(startingAddress);
-    }
-
-    @PostMapping("/api/modbus/{id}/coils")
-    public boolean writeCoil(@PathVariable("id") Integer id,  @RequestBody RegisterDto  dto) throws Exception {
-        return modbusService.writeCoil(id,dto.getStartingAddress(),Boolean.parseBoolean(dto.getValue()));
-    }
+    
     @PostMapping("/api/modbus/{id}/registers")
-    public RegisterDto writeRegisters(@PathVariable("id") Integer id,  @RequestBody RegisterDto dto) throws Exception {
-        return modbusService.writeRegisters(id,dto);
+    public String writeRegisters(@PathVariable("id") Integer id,  @RequestBody List<RegisterDto> registers) throws Exception {
+         modbusService.writeRegisters(id,registers);
+         return "success";
     }
 }
 //{offset,count,expression}

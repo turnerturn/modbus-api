@@ -2,7 +2,9 @@ package com.toolbox.modbus.tcplistener;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +22,6 @@ import net.wimpi.modbus.msg.WriteMultipleRegistersResponse;
 import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.util.ModbusUtil;
-
 
 @Slf4j
 @Getter
@@ -42,7 +43,7 @@ public class ModbusServiceImpl implements ModbusService {
      */
     @Value("${modbus.address:127.0.0.1}")
     private String address;// "192.168.1.197"; // Modbus device IP address
-    @Value("${modbus.port:502}")//Modbus.DEFAULT_PORT = 502
+    @Value("${modbus.port:502}") // Modbus.DEFAULT_PORT = 502
     private Integer port;
 
     public ModbusServiceImpl() {
@@ -50,11 +51,10 @@ public class ModbusServiceImpl implements ModbusService {
 
     private void assertRegisterGroupCapacity(Register[] registers, Integer count)
             throws IllegalArgumentException {
-        if (registers.length >count) {
+        if (registers.length > count) {
             throw new IllegalArgumentException("The value is too long to fit in the allotted registers.");
         }
     }
-
 
     private byte[] appendEmptySpaceWhenArrayLengthIsOdd(byte[] original) {
         // Check if the length of the original array is odd
@@ -73,26 +73,26 @@ public class ModbusServiceImpl implements ModbusService {
         return original;
     }
 
-    public boolean readCoil(Integer coilAddress) throws Exception {
+    public boolean readCoil(Integer offset) throws Exception {
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
-            return master.readCoils(coilAddress, 1).getBit(0);
+            return master.readCoils(offset, 1).getBit(0);
         }
     }
 
-    public boolean writeCoil(Integer unitId, Integer coilAddress, Boolean value) throws Exception {
+    public boolean writeCoil(Integer unitId, Integer offset, Boolean value) throws Exception {
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
-            master.writeCoil(unitId, coilAddress, value);
-            return readCoil(coilAddress);
+            master.writeCoil(unitId, offset, value);
+            return readCoil(offset);
         }
     }
 
-    public RegisterDto readRegisters(Integer startingAddress, Integer count) throws Exception {
+    public String readValueFromRegisters(Integer offset, Integer count) throws Exception {
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
-  
-            Register[] registers = master.readMultipleRegisters(startingAddress, count);
+
+            Register[] registers = master.readMultipleRegisters(offset, count);
 
             ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
             for (Integer i = 0; i < count; i++) {
@@ -102,40 +102,45 @@ public class ModbusServiceImpl implements ModbusService {
 
             String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
             log.info("String was retreived from modbus.  Value: {}", result);
-            
-            return new RegisterDto(startingAddress, count, result);
+
+            return result;
         }
     }
 
-    public RegisterDto writeRegisters(Integer unitId,  RegisterDto dto)
-            throws Exception {
-        Objects.requireNonNull(dto.getStartingAddress(), "startingAddress must not be null");
-              Objects.requireNonNull(dto.getValue(), "value must not be null");
-        
+    public void writeRegisters(Integer unitId, List<RegisterDto> registers) throws Exception {
+        Objects.requireNonNull(registers, "registers must not be null");
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
+            for (RegisterDto dto : registers) {
+                Objects.requireNonNull(dto.getOffset(), "startingAddress must not be null");
+                Objects.requireNonNull(dto.getValue(), "value must not be null");
 
-            Integer reference = dto.getStartingAddress(); // Reference of the register to be written
-            Register[] registers = stringToRegisterArray(dto.getValue());
-            //pad null terminator registers to the right so we can fill the given allottment of registers. 
-            //This removes any old remnants of values that may have previously been written.
-            //registers = padRight(endingAddress - registers.length, registers,new SimpleRegister((byte)0, (byte)0));
+                Integer reference = dto.getOffset(); // Reference of the register to be written
+                Register[] valueRegisters = stringToRegisterArray(dto.getValue());
+                // pad null terminator registers to the right so we can fill the given
+                // allottment of registers.
+                // This removes any old remnants of values that may have previously been
+                // written.
+                // registers = padRight(endingAddress - registers.length, registers,new
+                // SimpleRegister((byte)0, (byte)0));
 
-            if(dto.getCount()!= null){
-                assertRegisterGroupCapacity(registers, dto.getCount());
+                if (dto.getCount() != null) {
+                    assertRegisterGroupCapacity(valueRegisters, dto.getCount());
                     // TODO append null terminators to remaining space between endingAddress and
                     // startingAddress;
                     // write the new value to the allotted group of registers
+                }
+
+                WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(reference, valueRegisters);
+                request.setUnitID(unitId);
+                WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
+                log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
             }
-
-            WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(reference, registers);
-            request.setUnitID(unitId);
-            WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
-            log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
-
-            return readRegisters( response.getReference(), response.getWordCount());
         }
+    }
 
+    private boolean isCoilRegister(Integer offset) {
+        return offset >= 0 && offset <= 9999;
     }
 
     /**
@@ -159,30 +164,32 @@ public class ModbusServiceImpl implements ModbusService {
      */
     public Register[] stringToRegisterArray(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.US_ASCII);
-        
+
         // This avoids an index out of range exception when the bytes length is odd.
-       // Check if the length of the original array is odd
-        int arraySize = (bytes.length % 2 != 0)? bytes.length / 2 + 1 : bytes.length / 2;
+        // Check if the length of the original array is odd
+        int arraySize = (bytes.length % 2 != 0) ? bytes.length / 2 + 1 : bytes.length / 2;
 
         Register[] registers = new Register[arraySize];
-       
+
         for (Integer i = 0; i < (registers.length); i++) {
             Integer highByte = bytes[i * 2] & 0xFF;
-            //0x20 is the byte for an empty space.  We use this when wwe are handling a byte array of odd length.
-            Integer lowByte = ((bytes.length > (i * 2 + 1) )?bytes[i * 2 + 1] & 0xFF: 0x20);
+            // 0x20 is the byte for an empty space. We use this when wwe are handling a byte
+            // array of odd length.
+            Integer lowByte = ((bytes.length > (i * 2 + 1)) ? bytes[i * 2 + 1] & 0xFF : 0x20);
             registers[i] = new SimpleRegister(highByte << 8 | lowByte);
         }
-       
+
         return registers;
     }
 
-    public Register[] padRight(int padding, Register[] registers,Register paddingValue){
+    public Register[] padRight(int padding, Register[] registers, Register paddingValue) {
         int i = registers.length;
         registers = Arrays.copyOf(registers, registers.length + padding);
         // Pad the array to the right with the specified pad value.
-        Arrays.fill(registers, i, padding,paddingValue );
+        Arrays.fill(registers, i, padding, paddingValue);
         return registers;
     }
+
     public class AutoCloseableModbusTcpMaster extends ModbusTCPMaster implements AutoCloseable {
         public AutoCloseableModbusTcpMaster(String addr, Integer port) {
             super(addr, port);
@@ -204,7 +211,7 @@ public class ModbusServiceImpl implements ModbusService {
     @AllArgsConstructor
     @NoArgsConstructor
     static class RegisterDto {
-        private Integer startingAddress;
+        private Integer offset;
         private Integer count;
         private String value;
     }
