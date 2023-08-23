@@ -14,16 +14,28 @@ public class ModbusController {
     @Autowired
     private ModbusService modbusService;
 
-    @GetMapping("/api/modbus/{id}/registers/{offset}/{count}")
-    public String readValueFromRegisters(@PathVariable("id") Integer id,
+        @GetMapping("/api/modbus/{id}/coils/{offset}")
+    public Boolean readCoil(@PathVariable("id") Integer id,
+            @PathVariable("offset") Integer offset) throws Exception {
+        return modbusService.readCoil(offset);
+    }
+            @PostMapping("/api/modbus/{id}/coils/{offset}")
+    public Boolean writeCoil(@PathVariable("id") Integer id,
+            @PathVariable("offset") Integer offset,@RequestBody Boolean value) throws Exception {
+        return modbusService.writeCoil(id,offset,value);
+    }
+    @GetMapping("/api/modbus/{id}/holdingRegisters/{offset}/{count}")
+    public String readHoldingRegistersValue(@PathVariable("id") Integer id,
             @PathVariable("offset") Integer offset,
             @PathVariable("count") Integer count) throws Exception {
-        return modbusService.readValueFromRegisters(offset, count);
+        return modbusService.readHoldingRegistersValue(offset, count);
     }
     
-    @PostMapping("/api/modbus/{id}/registers")
-    public String writeRegisters(@PathVariable("id") Integer id,  @RequestBody List<RegisterDto> registers) throws Exception {
-         modbusService.writeRegisters(id,registers);
+    @PostMapping("/api/modbus/{id}/holdingRegisters/{offset}/{count}")
+    public String writeHoldingRegistersValue(@PathVariable("id") Integer id,
+            @PathVariable("offset") Integer offset,
+            @PathVariable("count") Integer count,  @RequestBody String value) throws Exception {
+         modbusService.writeHoldingRegistersValue(id,offset, count, value);
          return "success";
     }
 }

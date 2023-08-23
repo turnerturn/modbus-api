@@ -88,7 +88,7 @@ public class ModbusServiceImpl implements ModbusService {
         }
     }
 
-    public String readValueFromRegisters(Integer offset, Integer count) throws Exception {
+    public String readHoldingRegistersValue(Integer offset, Integer count) throws Exception {
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
 
@@ -107,7 +107,31 @@ public class ModbusServiceImpl implements ModbusService {
         }
     }
 
-    public void writeRegisters(Integer unitId, List<RegisterDto> registers) throws Exception {
+    public void writeHoldingRegistersValue(Integer unitId, Integer offset, Integer count,String value) throws Exception {
+        try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
+            master.connect();
+            Objects.requireNonNull(offset, "startingAddress must not be null");
+            Objects.requireNonNull(count, "value must not be null");
+
+            Integer reference = offset; // Reference of the register to be written
+            Register[] valueRegisters = stringToRegisterArray(value);
+            // pad null terminator registers to the right so we can fill the given
+            // allottment of registers.
+            // This removes any old remnants of values that may have previously been
+            // written.
+            // registers = padRight(endingAddress - registers.length, registers,new
+            // SimpleRegister((byte)0, (byte)0));
+
+            assertRegisterGroupCapacity(valueRegisters,count);
+            WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(offset, valueRegisters);
+            request.setUnitID(unitId);
+            WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
+            log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
+
+        }
+    }
+
+    public void uploadRegisters(Integer unitId, List<RegisterDto> registers) throws Exception {
         Objects.requireNonNull(registers, "registers must not be null");
         try (AutoCloseableModbusTcpMaster master = new AutoCloseableModbusTcpMaster(address, port)) {
             master.connect();
