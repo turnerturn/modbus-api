@@ -137,10 +137,10 @@ public class ModbusServiceImpl implements ModbusService {
             master.connect();
             for (RegisterDto dto : registerGroups) {
 
-                Objects.requireNonNull(dto.getStartingAddress(), "startingAddress must not be null");
+                Objects.requireNonNull(dto.getOffset(), "startingAddress must not be null");
                 Objects.requireNonNull(dto.getValue(), "value must not be null");
 
-                Integer reference = dto.getStartingAddress(); // Reference of the register to be written
+                Integer reference = dto.getOffset(); // Reference of the register to be written
                 Register[] registers = stringToRegisterArray(dto.getValue());
                 // pad null terminator registers to the right so we can fill the given
                 // allottment of registers.
