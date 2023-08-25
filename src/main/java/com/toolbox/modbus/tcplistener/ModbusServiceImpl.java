@@ -40,9 +40,9 @@ public class ModbusServiceImpl implements ModbusService {
      * Validates endingAddress >= startingAddress
      * Validates value can be written into the capacity of registers
      */
-    @Value("${modbus.address:127.0.0.1}")
+    @Value("${modbus.slave.address:127.0.0.1}")
     private String address;// "192.168.1.197"; // Modbus device IP address
-    @Value("${modbus.port:502}") // Modbus.DEFAULT_PORT = 502
+    @Value("${modbus.slave.port:502}") // Modbus.DEFAULT_PORT = 502
     private Integer port;
 
     public ModbusServiceImpl() {

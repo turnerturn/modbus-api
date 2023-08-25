@@ -27,7 +27,10 @@ dependencies {
 	implementation 'net.wimpi:jamod:1.2'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+	    implementation 'javax.annotation:javax.annotation-api:1.3.2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+implementation 'org.xhtmlrenderer:flying-saucer-pdf-itext5:9.1.22'
+
 }
 
 tasks.named('test') {

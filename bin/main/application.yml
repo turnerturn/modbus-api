@@ -1,0 +1,18 @@
+#uses localhost (127.0.0.1)  when this is not set
+modbus:
+  slave:
+    address: 127.0.0.1
+    #uses default modbus port 502 when this is not set
+    port: 9000
+    coils:
+      - name: "Button1"
+        address: 0
+        initialValue: "true"
+        listener:
+          event: "Button1Clicked"
+          value: "true"
+    holdingRegisters:
+      - name: "MessageVariable"
+        address: 0
+        count: 50
+        initialValue: "Matthew Is My Name"

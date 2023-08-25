@@ -36,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "modbus.dummy", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "modbus.slave", name = "address", havingValue = "127.0.0.1")
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 //Add conditional on property to enable/disable this bean.
@@ -44,9 +44,12 @@ public class ModbusTcpSlave {
   private  ModbusTCPListener listener ;
  @Autowired
  private ModbusService modbusService;
-    @Value("${modbus.address:127.0.0.1}")
+ @Autowired
+ private ModbusConfiguration config;
+ 
+    @Value("${modbus.slave.address:127.0.0.1}")
     private String address;// "192.168.1.197"; // Modbus device IP address
-    @Value("${modbus.port:502}")//Modbus.DEFAULT_PORT = 502
+    @Value("${modbus.slave.port:502}")//Modbus.DEFAULT_PORT = 502
     private Integer port;
   @PostConstruct
   public void init() throws Exception{
@@ -54,21 +57,26 @@ public class ModbusTcpSlave {
                   // Create a listener with 10 threads
           listener = new ModbusTCPListener(10);
 
-          // Prepare a process image
-          SimpleProcessImage spi = new SimpleProcessImage();
-          //see description of register in class level javadoc comments.
-          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 1
-          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 2
-          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 3 
-          spi.addDigitalOut(new SimpleDigitalOut(true)); // Coil for button 4 
-       int endingAddress = 50000;
-       //Register[] registers = modbusService.stringToRegisterArray(variable1);
+                // Prepare a process image
+        SimpleProcessImage spi = new SimpleProcessImage();
+        config.getSlave().getCoils().forEach(c -> {
+                spi.addDigitalOut(new SimpleDigitalOut(Boolean.valueOf(c.getInitialValue())));
+        });
         
-       // Add holding registers
-        for (int i = 0; i <  endingAddress; i++) {
-                spi.addRegister(new SimpleInputRegister((byte)0,(byte) 0)); // Adding 10 holding registers with initial value 0
-        }
-
+        config.getSlave().getHoldingRegisters().forEach(r -> {
+                for(int i = 0; i < r.getAddress()+r.getCount(); i++){
+                        spi.addRegister(new SimpleRegister((byte)0,(byte) 0)); // Adding 10 holding registers with initial value 0
+                }
+                r.getInitialValue().ifPresent(v -> {
+                        try {
+                                modbusService.writeValueToRegisterGroup(1,r.getAddress(),r.getCount(),v);
+                        } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                        }
+                });
+         });
+       
           // Set the image on the coupler
           ModbusCoupler.getReference().setProcessImage(spi);
           ModbusCoupler.getReference().setMaster(false);
