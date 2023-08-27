@@ -11,9 +11,25 @@ modbus:
         listener:
           event: "Button1Clicked"
           value: "true"
-          pollingInterval: 1 #polling every 1 second
-    holdingRegisters:
-      - name: "MessageVariable"
-        address: 0
-        count: 50
-        initialValue: "Matthew Is My Name"
+
+touchscreen:
+  variables:
+    - name: "Page4BookTitleVariable"
+      address: 0 #starting address of the given variable
+      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
+      expression: //Books/book[@page='4'][4]/title/text()  #xpath expression to extract the value from the xml
+    - name: "Page4BookAuthorVariable"
+      address: 8 #starting address of the given variable
+      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
+      expression: //Books/book[@page='4'][4]/author/text()  #xpath expression to extract the value from the xml
+  buttons:
+    - name: "button1"
+      address: 0  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
+    - name: "button2"
+      address: 1  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
+    - name: "button3"
+      address: 2  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
+    - name: "button4"
+      address: 3  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
+    - name: "button5"
+      address: 4  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)

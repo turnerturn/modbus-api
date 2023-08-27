@@ -1,15 +1,5 @@
 package com.toolbox.modbus.tcplistener;
 
-import net.wimpi.modbus.Modbus;
-import net.wimpi.modbus.ModbusCoupler;
-import net.wimpi.modbus.net.ModbusTCPListener;
-import net.wimpi.modbus.procimg.SimpleProcessImage;
-import net.wimpi.modbus.procimg.SimpleDigitalOut;
-import net.wimpi.modbus.procimg.Register;
-import net.wimpi.modbus.procimg.SimpleDigitalIn;
-import net.wimpi.modbus.procimg.SimpleRegister;
-import net.wimpi.modbus.procimg.SimpleInputRegister;
-
 import java.net.InetAddress;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +7,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.wimpi.modbus.ModbusCoupler;
+import net.wimpi.modbus.net.ModbusTCPListener;
+import net.wimpi.modbus.procimg.SimpleDigitalOut;
+import net.wimpi.modbus.procimg.SimpleProcessImage;
+import net.wimpi.modbus.procimg.SimpleRegister;
 
 /**
  * A Modbus TCP Server demonstrating how to set up a listener and define a process image.
@@ -43,9 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ModbusTcpSlave {
   private  ModbusTCPListener listener ;
  @Autowired
- private ModbusService modbusService;
- @Autowired
- private ModbusConfiguration config;
+ private Touchscreen touchscreen;
  
     @Value("${modbus.slave.address:127.0.0.1}")
     private String address;// "192.168.1.197"; // Modbus device IP address
@@ -59,23 +51,15 @@ public class ModbusTcpSlave {
 
                 // Prepare a process image
         SimpleProcessImage spi = new SimpleProcessImage();
-        config.getSlave().getCoils().forEach(c -> {
-                spi.addDigitalOut(new SimpleDigitalOut(Boolean.valueOf(c.getInitialValue())));
+        touchscreen.getButtons().forEach(c -> {
+                spi.addDigitalOut(new SimpleDigitalOut(false));//initial value of false
         });
         
-        config.getSlave().getHoldingRegisters().forEach(r -> {
+        touchscreen.getVariables().forEach(r -> {
                 for(int i = 0; i < r.getAddress()+r.getCount(); i++){
                         spi.addRegister(new SimpleRegister((byte)0,(byte) 0)); // Adding 10 holding registers with initial value 0
                 }
-                r.getInitialValue().ifPresent(v -> {
-                        try {
-                                modbusService.writeValueToRegisterGroup(1,r.getAddress(),r.getCount(),v);
-                        } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                        }
-                });
-         });
+        });
        
           // Set the image on the coupler
           ModbusCoupler.getReference().setProcessImage(spi);
@@ -86,7 +70,8 @@ public class ModbusTcpSlave {
           listener.setPort(this.port);
           listener.start();
           log.info("Modbus TCP Listener started... Address: {} Port: {}",this.address,this.port);
-  }
+        }
+
   @PreDestroy
   private void destory(){
     log.trace("destroy()");

@@ -31,6 +31,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 implementation 'org.xhtmlrenderer:flying-saucer-pdf-itext5:9.1.22'
 
+    implementation 'org.springframework.boot:spring-boot-starter'
+
 }
 
 tasks.named('test') {
