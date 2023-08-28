@@ -13,7 +13,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
-
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.util.ArrayList;
+import java.util.List;
+import org.w3c.dom.Node;
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -25,30 +39,34 @@ public class TouchscreenAssistant {
     @Autowired
     private Toolbox toolbox;
     private Integer currentDetailsPageIndex;
-   private Integer currentOptionsPage;
+    private Integer currentOptionsPage;
 
+    private String xmlMessage;
     @PostConstruct
-    private void init(){
+    private void init() {
         currentOptionsPage = getFirstOptionsPageIndex();
         currentDetailsPageIndex = 1;
     }
+
     public void process(String xmlMessage) throws Exception {
+        this.xmlMessage = xmlMessage;
         clearSessionVariables();
-        // TODO extract parent element from xml
+        clearPageAttributes(xmlMessage);
         // TODO Save xml object to memory
-        //  assign page number attribute to xml elements
-        assignPageNumberAttributes();
+        // assign page number attribute to xml elements
+        assignPageNumberAttributes(xmlMessage);
 
         // extract variables from elements where page > 0
-        decorateVariablesWithMessage();
+        decorateVariablesWithMessage( xmlMessage);
         writeAllVariables();
     }
-
- 
-    public Integer getCurrentOptionsPageIndex() {
+    
+    public Integer getCurrentOptionsPage() {
         return currentOptionsPage;
     }
-
+    public void setCurrentOptionsPage(Integer currentOptionsPage) {
+        this.currentOptionsPage = currentOptionsPage;
+    }
     public Integer getFirstOptionsPageIndex() {
         return 1;
     }
@@ -58,7 +76,7 @@ public class TouchscreenAssistant {
     }
 
     public Integer getNextOptionsPageIndex() {
-        int currentPageIndex = getCurrentOptionsPageIndex();
+        int currentPageIndex = getCurrentOptionsPage();
         if (currentPageIndex + 1 > getLastOptionsPageIndex()) {
             return getFirstOptionsPageIndex();
         } else {
@@ -67,39 +85,59 @@ public class TouchscreenAssistant {
     }
 
     public Integer getPreviousOptionsPageIndex() {
-        int currentPageIndex = getCurrentOptionsPageIndex();
+        int currentPageIndex = getCurrentOptionsPage();
         if (currentPageIndex - 1 < getFirstOptionsPageIndex()) {
             return getLastOptionsPageIndex();
         } else {
             return currentPageIndex - 1;
         }
     }
-    private void assignPageNumberAttributes(){
 
-    }
-    private void decorateVariablesWithMessage(){
 
+    private void decorateVariablesWithMessage(String xmlMessage) {
+        touchscreen.getVariables().stream().forEach(v -> {
+            try {
+                String value = extractTextValue(xmlMessage, v.getExpression());
+                v.setValue(value);
+            } catch (Exception e) {
+                  log.warn("Failed to decorate variables with text values extracted from xml essage.", e);
+            }
+        });
     }
-    private void decorateMessageWithVariables(){
 
+    private void decorateMessageWithVariables(String xmlMessage) {
+        touchscreen.getVariables().stream().forEach(v -> {
+            try {
+               setTextValueWithExpressionAndValue(xmlMessage, v.getExpression(), v.getValue());
+            } catch (Exception e) {
+                log.warn("Failed to decorate xml message from variable values.", e);
+            }
+        });
     }
-    public void writeAllVariables() {
+
+    protected void syncVariableValuesWithModbus(){
+        //TODO reads each variables value from modbus and sets variable.value
+    }
+    protected void writeAllVariables() {
         touchscreen.getVariables().stream().forEach(this::writeVariable);
     }
-    public List<Variable> readAllVariables() {
+
+    protected List<Variable> readAllVariables() {
         List<Variable> variables = new ArrayList<>();
         touchscreen.getVariables().stream().map(this::readVariable).forEach(variables::add);
         ;
         return variables;
     }
-    public void writeVariable(Variable variable) {
+
+    protected void writeVariable(Variable variable) {
         try {
-            modbusClient.writeStringValueToRegisters(variable.getAddress(), variable.getCount(),variable.getValue());
+            modbusClient.writeStringValueToRegisters(variable.getAddress(), variable.getCount(), variable.getValue());
         } catch (Exception e) {
             log.warn("Failed to write variable.  Variable: {}", variable, e);
         }
     }
-    public Variable readVariable(Variable variable) {
+
+    protected Variable readVariable(Variable variable) {
         try {
             String value = modbusClient.readStringValueFromRegisters(variable.getAddress(), variable.getCount());
             return new Variable(variable.getName(), variable.getAddress(), variable.getCount(), variable.isPersisted(),
@@ -129,7 +167,7 @@ public class TouchscreenAssistant {
         }
     }
 
-    private void clearVariable(Variable variable) throws Exception {
+    protected void clearVariable(Variable variable) throws Exception {
         List<Register> registers = new ArrayList<>();
         toolbox.fillList(registers, new SimpleRegister((byte) 0, (byte) 0), variable.getCount());
         modbusClient.writeRegisters(variable.getAddress(), registers);
@@ -151,7 +189,7 @@ public class TouchscreenAssistant {
         }
     }
 
-    public void handleManualEntryButtonClickEvent() {
+    protected void handleManualEntryButtonClickEvent() {
         try {
             clearSessionVariables();
 
@@ -162,33 +200,38 @@ public class TouchscreenAssistant {
         }
     }
 
-    private void renderOptionButtonLabels() {
+    protected void renderOptionButtonLabels() {
 
     }
 
-    private void renderDetailPages() {
+    protected void renderDetailPages() {
 
     }
 
-    private void handleDoneButtonClickEvent() {
-        decorateMessageWithVariables();
+    protected void handleDoneButtonClickEvent() {
+        syncVariableValuesWithModbus();
+        decorateMessageWithVariables(xmlMessage);
+        //TODO respond to sender
+        //TODO display message on touchscreen
     }
-
+    
     private void handleNextOptionsPageButtonClickEvent() {
-        // TODO decorate xml with next pages.
+        setCurrentOptionsPage(getNextOptionsPageIndex());
         renderOptionButtonLabels();
         renderDetailPages();
     }
 
     private void handlePreviousOptionsPageButtonClickEvent() {
-        // TODO decorate xml with previous pages.
+        setCurrentOptionsPage(getPreviousOptionsPageIndex());
         renderOptionButtonLabels();
         renderDetailPages();
     }
 
     private void handleSaveButtonClickEvent() {
-        //Do nothing.  This logic is handled on touchscreen.  Only added here for completeness.
+        // Do nothing. This logic is handled on touchscreen. Only added here for
+        // completeness.
     }
+
 
     public void setCurrentDetailsPageIndex(Integer selectedDetailsPageIndex) {
         this.currentDetailsPageIndex = selectedDetailsPageIndex;
@@ -270,6 +313,121 @@ public class TouchscreenAssistant {
             }
         }
 
+    }
+
+    private String clearPageAttributes(String xml) throws Exception {
+        // Selects the first 4 book elements that are children of the bookstore element
+        String xpathExpression = "/bookstore/book";
+        List<Element> elements = new ArrayList<>();
+
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        XPath xpath = xPathFactory.newXPath();
+
+        NodeList nodeList = (NodeList) xpath.evaluate(xpathExpression, doc, XPathConstants.NODESET);
+
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Element elem = (Element) nodeList.item(i);
+            elem.setAttribute("page", ""); // Setting attribute here
+            elements.add(elem);
+        }
+
+        // If you want to save the modified XML back to a string
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        DOMSource source = new DOMSource(doc);
+        StreamResult result = new StreamResult(new java.io.StringWriter());
+        transformer.transform(source, result);
+        String modifiedXmlString = result.getWriter().toString();
+
+        log.info("Modified XML: \n {}", modifiedXmlString);
+
+        return modifiedXmlString;
+    }
+
+
+    /**
+     * Extracts a text value from an XML string using an XPath expression.
+     *
+     * @param xml             the xml string
+     * @param xpathExpression the XPath expression to evaluate
+     * @return the text value as a String
+     * @throws Exception if an XPath expression evaluation error occurs
+     */
+    private  String extractTextValue(String xml, String xpathExpression) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+
+        XPathFactory xpathFactory = XPathFactory.newInstance();
+        XPath xpath = xpathFactory.newXPath();
+
+        Node node = (Node) xpath.evaluate(xpathExpression, doc, XPathConstants.NODE);
+        if (node == null) {
+            throw new Exception("Node not found for the XPath expression: " + xpathExpression);
+        }
+
+        return node.getTextContent();
+    }
+/**
+ * Sets the text value of an XML element identified by an XPath expression.
+ *
+ * @param xml             the XML string 
+ * @param xpathExpression the XPath expression to evaluate
+ * @param newValue        the new text value to set
+ * @throws Exception if an XPath expression evaluation error occurs
+ */
+public static void setTextValueWithExpressionAndValue(String xml, String xpathExpression, String newValue) throws Exception {
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilder builder = factory.newDocumentBuilder();
+    Document doc = builder.parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+
+    XPathFactory xpathFactory = XPathFactory.newInstance();
+    XPath xpath = xpathFactory.newXPath();
+
+    Node node = (Node) xpath.evaluate(xpathExpression, doc, XPathConstants.NODE);
+    if (node == null) {
+        throw new Exception("Node not found for the XPath expression: " + xpathExpression);
+    }
+
+    node.setTextContent(newValue);
+}
+    private  List<Element> assignPageNumberAttributes(String xml) throws Exception {
+        int itemIndexStart = ((getCurrentOptionsPage() - 1)  * touchscreen.getPageSize());
+        int itemIndexEnd = itemIndexStart +  touchscreen.getPageSize();
+       // Selects the first 4 book elements that are children of the bookstore element
+        String xpathExpression = "/bookstore/book[position()> "+itemIndexStart+" and position()<= "+itemIndexEnd+"]";
+        List<Element> elements = new ArrayList<>();
+
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new java.io.ByteArrayInputStream(xml.getBytes()));
+
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        XPath xpath = xPathFactory.newXPath();
+
+        NodeList nodeList = (NodeList) xpath.evaluate(xpathExpression, doc, XPathConstants.NODESET);
+
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Element elem = (Element) nodeList.item(i);
+            elem.setAttribute("page", String.valueOf(getCurrentOptionsPage()));  // Setting attribute here
+            elements.add(elem);
+        }
+
+        // If you want to save the modified XML back to a string
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        DOMSource source = new DOMSource(doc);
+        StreamResult result = new StreamResult(new java.io.StringWriter());
+        transformer.transform(source, result);
+        String modifiedXmlString = result.getWriter().toString();
+
+        System.out.println("Modified XML: \n" + modifiedXmlString);
+
+        return elements;
     }
 
 }

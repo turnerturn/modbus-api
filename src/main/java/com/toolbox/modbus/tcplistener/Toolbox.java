@@ -4,7 +4,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+
 import org.springframework.stereotype.Service;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class Toolbox {
@@ -13,10 +32,13 @@ public class Toolbox {
     }
 
     /**
-     * The listChunker function takes a list of items and the desired chunk size as its
-     * parameters. It converts the list to array and uses Java's System.arraycopy() method to create sub-arrays and adds them to an ArrayList.
+     * The listChunker function takes a list of items and the desired chunk size as
+     * its
+     * parameters. It converts the list to array and uses Java's System.arraycopy()
+     * method to create sub-arrays and adds them to an ArrayList.
      * The function returns this ArrayList, which contains all the chunks.
-     * @param list The list to be chunked
+     * 
+     * @param list      The list to be chunked
      * @param chunkSize The desired chunk size
      * @return An ArrayList containing all the chunked lists.
      */
@@ -33,8 +55,14 @@ public class Toolbox {
 
         return chunkedList;
     }
+
     /**
-     * This example uses a generic method fillList which can work with a list of any type (List<T>). The method takes the list to fill (list), the object to fill it with (objectToFill), and the size up to which it should be filled (size). It then iteratively adds objectToFill to list until it reaches the specified size.
+     * This example uses a generic method fillList which can work with a list of any
+     * type (List<T>). The method takes the list to fill (list), the object to fill
+     * it with (objectToFill), and the size up to which it should be filled (size).
+     * It then iteratively adds objectToFill to list until it reaches the specified
+     * size.
+     * 
      * @param <T>
      * @param list
      * @param objectToFill
@@ -45,4 +73,5 @@ public class Toolbox {
             list.add(objectToFill);
         }
     }
+
 }
