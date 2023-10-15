@@ -1,35 +1,6 @@
 #uses localhost (127.0.0.1)  when this is not set
 modbus:
-  slave:
-    address: 127.0.0.1
-    #uses default modbus port 502 when this is not set
-    port: 9000
-    coils:
-      - name: "Button1"
-        address: 0
-        initialValue: "true"
-        listener:
-          event: "Button1Clicked"
-          value: "true"
-
-touchscreen:
-  variables:
-    - name: "Page4BookTitleVariable"
-      address: 0 #starting address of the given variable
-      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
-      expression: //Books/book[@page='4'][4]/title/text()  #xpath expression to extract the value from the xml
-    - name: "Page4BookAuthorVariable"
-      address: 8 #starting address of the given variable
-      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
-      expression: //Books/book[@page='4'][4]/author/text()  #xpath expression to extract the value from the xml
-  buttons:
-    - name: "button1"
-      address: 0  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
-    - name: "button2"
-      address: 1  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
-    - name: "button3"
-      address: 2  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
-    - name: "button4"
-      address: 3  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
-    - name: "button5"
-      address: 4  #modbus coil address indicating status of the button.  (0 = idle, 1 = clicked)
+  unitId: 1
+  host: localhost
+  #uses default modbus port 502 when this is not set
+  port: 9003
