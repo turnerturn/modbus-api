@@ -1,129 +1,168 @@
 package com.toolbox.modbus.tcplistener;
 
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import net.wimpi.modbus.ModbusException;
 import net.wimpi.modbus.facade.ModbusTCPMaster;
-import net.wimpi.modbus.msg.WriteMultipleRegistersRequest;
-import net.wimpi.modbus.msg.WriteMultipleRegistersResponse;
 import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.util.ModbusUtil;
 
 @Slf4j
-@Service
+@Component
 public class ModbusClient {
     @Autowired
     private Toolbox toolbox;
 
-    private final Integer unitId;
+    @Value("${modbus.unitId:1}")
+    private Integer unitId;
 
-    // "192.168.1.197"; // Modbus device IP address
-    private final String address;
+    // "192.168.1.197"; // Modbus device IP ip
+    @Value("${modbus.host:127.0.0.1}")
+    private String host;
     // Modbus.DEFAULT_PORT = 502
-    private final Integer port;
+    @Value("${modbus.port:9001}")
+    private Integer port;
 
-    private ModbusTCPMaster master;
+    public ModbusClient() {
+    }
 
-    public ModbusClient(@Value("${modbus.slave.unitId:1}") Integer unitId,
-            @Value("${modbus.slave.address:127.0.0.1}") String address,
-            @Value("${modbus.slave.port:502}") Integer port) {
+    public ModbusClient(Integer unitId, String host, Integer port) {
         this.unitId = unitId;
-        this.address = address;
+        this.host = host;
         this.port = port;
     }
 
-    @PostConstruct
-    protected void connect() throws Exception {
-        this.master = new ModbusTCPMaster(address, port);
-        this.master.connect();
-    }
-
-    @PreDestroy
-    protected void disconnect() throws Exception {
-        disconnect();
-    }
-
-    private void assertRegisterGroupCapacity(Register[] registers, Integer count)
-            throws IllegalArgumentException {
-        if (registers.length > count) {
-            throw new IllegalArgumentException("The value is too long to fit in the allotted registers.");
-        }
-    }
-
-    public boolean readCoil(Integer offset) throws Exception {
-        return master.readCoils(offset, 1).getBit(0);
-    }
-
-    public boolean writeCoil(Integer offset, Boolean value) throws Exception {
-        master.writeCoil(unitId, offset, value);
-        return readCoil(offset);
-    }
-
-    public String readStringValueFromRegisters(Integer offset, Integer count) throws Exception {
-
-        Register[] registers = master.readMultipleRegisters(offset, count);
-
-        ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
-        for (Integer i = 0; i < count; i++) {
-            SimpleRegister register = new SimpleRegister(registers[i].getValue());
-            byteBuffer.putShort(ModbusUtil.registerToShort(register.toBytes()));
-        }
-
-        String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
-        log.info("String was retreived from modbus.  Value: {}", result);
-        return result;
-    }
-
-    public String writeStringValueToRegisters(Integer offset, Integer count, String value) throws Exception {
-
-        Register[] registers = master.readMultipleRegisters(offset, count);
-        assertRegisterGroupCapacity(registers, count);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
-        for (Integer i = 0; i < count; i++) {
-            SimpleRegister register = new SimpleRegister(registers[i].getValue());
-            byteBuffer.putShort(ModbusUtil.registerToShort(register.toBytes()));
-        }
-
-        String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
-        log.info("String was retreived from modbus.  Value: {}", result);
-        return result;
-    }
-
     public Register[] readRegisters(Integer offset, Integer count) throws Exception {
-        return master.readMultipleRegisters(offset, count);
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
+                InetAddress.getByName(host).getHostName(), port)) {
+            m.connect();
+            return m.readMultipleRegisters(offset, count);
+        }
     }
 
-    public void writeRegisters(Integer offset, Register[] registers) throws Exception {
-
-        WriteMultipleRegistersRequest request = new WriteMultipleRegistersRequest(offset, registers);
-        request.setUnitID(unitId);
-        WriteMultipleRegistersResponse response = (WriteMultipleRegistersResponse) request.createResponse();
-        log.info("Offset: {} WordCount: {}", response.getReference(), response.getWordCount());
+    public void writeRegisters(Integer offset, List<Register> registerList) throws Exception {
+       
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
+                InetAddress.getByName(host).getHostName(), port)) {
+            m.connect();
+            List<List<Register>> listOfChunkedRegisters = chunkRegisters(registerList, 125);
+            for(List<Register> chunkedRegisterList : listOfChunkedRegisters){
+                Register[] registers = chunkedRegisterList.toArray(new Register[chunkedRegisterList.size()]);
+                m.writeMultipleRegisters(offset, registers);
+                offset += registers.length;
+            }
+        }
     }
 
-    public void writeRegisters(Integer offset, List<Register> registers) throws Exception {
-        writeRegisters(offset, registers.toArray(new Register[registers.size()]));
+    /**
+     * Converts a byte array to an array of SimpleRegister.
+     *
+     * @param byteArray The input byte array.
+     * @return An array of SimpleRegister.
+     */
+    public Register[] toRegisterArray(byte[] bytes) {
+        // Calculate the length of the Register array
+        int length = bytes.length / 2;
+
+        // Initialize the SimpleRegister array
+        SimpleRegister[] registerArray = new SimpleRegister[length];
+
+        // Loop through the SimpleRegister array and populate it
+        for (int i = 0; i < length; i++) {
+            int value = ((bytes[i * 2] & 0xFF) << 8) | (bytes[i * 2 + 1] & 0xFF);
+            registerArray[i] = new SimpleRegister(value);
+        }
+
+        return registerArray;
     }
 
+
+/**
+ * Converts an array of registers into a long value.  Dint datatype requires 2 registers per long value.
+ * @param registers
+ * @return
+ * @throws Exception
+ */
+    public long registersToLong(Register[] registers) throws Exception {
+        Register register1 = new SimpleRegister(registers[0].getValue());
+        Register register2 = new SimpleRegister(registers[1].getValue());
+      // Create a ByteBuffer to hold the two 16-bit registers
+      ByteBuffer buffer = ByteBuffer.allocate(4);
+
+      // Put the two registers into the ByteBuffer as two shorts
+      buffer.putShort( register1.toShort());
+      buffer.putShort(register2.toShort());
+
+              // Flip the ByteBuffer to read it
+              buffer.flip();
+                // Retrieve the combined long value
+              return buffer.getInt() & 0xFFFFFFFFL;
+    }
+/**
+ * Converts a long value into an array of registers representing a 'dint' dataTyoe.  Dint datatype requires 2 registers per long value.
+ * @param value
+ * @return
+ */
+    public Register[] longToRegisters(Long value) {
+
+        int register1 = (int) ((value >> 48) & 0xFFFF); // Most significant 16 bits
+        int register2 = (int) ((value >> 32) & 0xFFFF); // Next 16 bits
+        int register3 = (int) ((value >> 16) & 0xFFFF); // Next 16 bits
+        int register4 = (int) (value & 0xFFFF); // Least significant 16 bits
+        Register[] registers = { new SimpleRegister(register1), new SimpleRegister(register2),
+                new SimpleRegister(register3), new SimpleRegister(register4) };
+        return registers;
+    }
+
+
+/**
+ * Converts a string value into a byte value.
+ * @param input
+ * @return
+ */
+    protected  byte convertStringToByte(String input) {
+        byte result = 0;
+
+      for (int i = 0; i < 8; i++) {
+            char c = input.charAt(i);
+            if (c == '1') {
+                result |= (1 << (i));
+            } else if (c != '0') {
+                throw new IllegalArgumentException("Input string contains invalid characters: " + input);
+            }
+        }
+
+        return result;
+    }
+/**
+ * Converts a byte value into a string value.
+ * @param inputByte
+ * @return
+ */
+    public  String convertByteToString(byte inputByte) {
+        StringBuilder stringBuilder = new StringBuilder(8);
+
+        // Iterate through each bit in the byte
+        for (int i = 0; i < 8; i++) {
+            // Use bitwise AND operation to check the value of the bit
+            byte bitValue = (byte) ((inputByte >> i) & 1);
+
+            // Append '0' or '1' to the StringBuilder
+            stringBuilder.append(bitValue);
+        }
+
+        return stringBuilder.toString();
+    }
     /**
      * Converts a string value into an array of registers.
      * 
@@ -143,7 +182,7 @@ public class ModbusClient {
      * @param value the string value to be converted
      * @return a holding register array representing the string value
      */
-    public Register[] stringToRegisterArray(String value) {
+    protected Register[] stringToRegisterArray(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.US_ASCII);
 
         // This avoids an index out of range exception when the bytes length is odd.
@@ -162,7 +201,50 @@ public class ModbusClient {
 
         return registers;
     }
+    /**
+     * Converts an array of registers into a string value.
+     * @param registers
+     * @return
+     * @throws Exception
+     */
+    public String registersArrayToString(Register[] registers) throws Exception {
+        //log.trace("toString(...)");
+        Objects.requireNonNull(registers, "registers is null");
+        ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
+        for (Register register : registers) {
+            byteBuffer.putShort(ModbusUtil.registerToShort(new SimpleRegister(register.getValue()).toBytes()));
+        }
+        String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
+        //log.debug("Registers was converted to string.  Value: {}", result);
+        return result;
+    }
 
+    /**
+     * The chunkRegisters function takes a list of items and the desired chunk size as input.
+     * It then iterates through the list and creates a new list for each chunk of items.
+     * 
+     * 
+     * @param list      The list to be chunked
+     * @param chunkSize The desired chunk size
+     * @return An ArrayList containing all the chunked lists.
+     */
+    public List<List<Register>> chunkRegisters(List<Register> registers, int chunkSize) {
+        List<List<Register>> chunkedList = new ArrayList<>();
+
+        int totalSize = registers.size();
+
+        for (int i = 0; i < totalSize; i += chunkSize) {
+            int end = Math.min(i + chunkSize, totalSize);
+            List<Register> chunk = registers.subList(i, end);
+            chunkedList.add(new ArrayList<>(chunk));
+        }
+
+        return chunkedList;
+    }
+/**
+ * This class is used to create a ModbusTCPMaster object that implements the AutoCloseable interface.
+ * @author mturner
+ */
     public class AutoCloseableModbusTcpMaster extends ModbusTCPMaster implements AutoCloseable {
         public AutoCloseableModbusTcpMaster(String addr, Integer port) {
             super(addr, port);

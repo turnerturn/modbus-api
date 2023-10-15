@@ -1,59 +1,6 @@
 #uses localhost (127.0.0.1)  when this is not set
 modbus:
-  slave:
-    unitId: 1
-    address: 127.0.0.1
-    #uses default modbus port 502 when this is not set
-    port: 9000
-    coils:
-      - name: "Button1"
-        address: 0
-        initialValue: "true"
-        listener:
-          event: "Button1Clicked"
-          value: "true"
-
-touchscreen:
-  pageSize: 4 #4 items per page
-  pageCount: 4 #4 pages total
-  variables:
-    - name: "Page4BookTitleVariable"
-      address: 0 #starting address of the given variable
-      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
-      expression: //Books/book[@page='4'][4]/title/text()  #xpath expression to extract the value from the xml
-      persist: false #true if we want to persist this variable between each authenticated session at the touchscreen.
-    - name: "Page4BookAuthorVariable"
-      address: 8 #starting address of the given variable
-      count: 8 # count = String.getBytes().length / 2 #variable allows up to 16 characters.  
-      expression: //Books/book[@page='4'][4]/author/text()  #xpath expression to extract the value from the xml
-  buttons:
-    - type: DONE_BUTTON 
-      address: 0  
-      description: The button indicating when the user is done at the touchscreen.
-    - type: ABORT_BUTTON 
-      address: 0  
-      description: The button indicating when the user is wishing to abort their session at the touchscreen.
-    - type: MANUAL_ENTRY_BUTTON 
-      address: 0  
-      description: The button indicating when the user is wishing to implement our manual entry features at the touchscreen.
-    - type: SAVE_BUTTON 
-      address: 0  
-      description: The button indicating when the user is trying to save details at the touchscreen.
-    - type: NEXT_OPTIONS_PAGE_BUTTON 
-      address: 0  
-      description: The button indicating when to load the next set of options on the touchscreen.
-    - type: PREVIOUS_OPTIONS_PAGE_BUTTON     
-      address: 0  
-      description: The button indicating when to load the previous set of options on the touchscreen.
-    - type: DETAILS_PAGE_1_BUTTON 
-      address: 0  
-      description: The button indicating when the user selected button to view details on option 1 of current options page.
-    - type: DETAILS_PAGE_2_BUTTON 
-      address: 0  
-      description: The button indicating when the user selected button to view details on option 2 of current options page.
-    - type: DETAILS_PAGE_3_BUTTON 
-      address: 0  
-      description: The button indicating when the user selected button to view details on option 3 of current options page.
-    - type: DETAILS_PAGE_4_BUTTON 
-      address: 0  
-      description: The button indicating when the user selected button to view details on option 4 of current options page.
+  unitId: 1
+  host: localhost
+  #uses default modbus port 502 when this is not set
+  port: 9003
