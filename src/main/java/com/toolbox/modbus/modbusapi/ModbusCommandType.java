@@ -1,4 +1,4 @@
-package com.toolbox.modbus.tcplistener;
+package com.toolbox.modbus.modbusapi;
 
 public enum ModbusCommandType {
     WRITE_STRING_TO_REGISTERS,

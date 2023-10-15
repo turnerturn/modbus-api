@@ -1,24 +1,28 @@
-package com.toolbox.modbus.tcplistener;
+package com.toolbox.modbus.modbusapi;
 
 import lombok.Builder;
 import lombok.ToString;
 
 @Builder
 @ToString
-public class ModbusCommand {
+public class ModbusCommandResponse {
     private ModbusCommandType commandType;
     private Integer registerOffset;
     private Integer registerCount;
     private String data;
-    public ModbusCommand () {
-}
+    private Integer statusCode;
+    private String message;
     //constructor
-    public ModbusCommand(ModbusCommandType commandType, Integer registerOffset, Integer registerCount, String data) {
+    public ModbusCommandResponse() {
+    }
+    public ModbusCommandResponse(ModbusCommandType commandType, Integer registerOffset, Integer registerCount, String data, Integer statusCode, String message) {
         super();
         this.commandType = commandType;
         this.registerOffset = registerOffset;
         this.registerCount = registerCount;
         this.data = data;
+        this.statusCode = statusCode;
+        this.message = message;
     }
     //getters and setters
     public ModbusCommandType getCommandType() {
@@ -45,5 +49,17 @@ public class ModbusCommand {
     public void setData(String data) {
         this.data = data;
     }
+    public Integer getStatusCode() {
+        return statusCode;
+    }
+    public void setStatusCode(Integer statusCode) {
+        this.statusCode = statusCode;
+    }
+    public String getMessage() {
+        return message;
+    }
+    public void setMessage(String message) {
+        this.message = message;
+    }
+    
 }
-

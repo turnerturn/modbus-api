@@ -1,4 +1,4 @@
-package com.toolbox.modbus.tcplistener;
+package com.toolbox.modbus.modbusapi;
 
 import java.util.Arrays;
 
@@ -15,13 +15,13 @@ import net.wimpi.modbus.util.ModbusUtil;
 @NoArgsConstructor
 @AllArgsConstructor
 @Component
-public class WriteLowByteToRegisters extends ModbusCommandHandler {
+public class WriteHighByteToRegisters extends ModbusCommandHandler {
     @Autowired
     private ModbusClient client;
 
     @Override
     public boolean isMine(ModbusCommand command) {
-        return ModbusCommandType.WRITE_LOW_BYTE_TO_REGISTERS.equals(command.getCommandType());
+        return ModbusCommandType.WRITE_HIGH_BYTE_TO_REGISTERS.equals(command.getCommandType());
     }
 
     @Override
@@ -33,18 +33,16 @@ public class WriteLowByteToRegisters extends ModbusCommandHandler {
         response.setStatusCode(HttpStatus.OK.value());
         try {
             Register[] registers = client.readRegisters(command.getRegisterOffset(), 1);
-          byte highByte =  ModbusUtil.hiByte(registers[0].getValue());
-          byte lowByte  = client.convertStringToByte(command.getData());
-
-          client.writeRegisters(command.getRegisterOffset(), Arrays.asList(new SimpleRegister(highByte, lowByte)));
+            byte lowByte =  ModbusUtil.lowByte(registers[0].getValue());
+            byte highByte  = client.convertStringToByte(command.getData());
+    client.writeRegisters(command.getRegisterOffset(), Arrays.asList(new SimpleRegister(highByte, lowByte)));
         
-        } catch (Exception e) {
+         } catch (Exception e) {
             //log.error("Failed to execute.", e);
             response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            response.setMessage("Failed to write low byte to registers.  Reason: " + e.getMessage());
+            response.setMessage("Failed to write high byte to registers.  Reason: " + e.getMessage());
         }
         return response;
     }
 
-  
 }

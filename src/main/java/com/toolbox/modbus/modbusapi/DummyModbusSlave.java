@@ -1,4 +1,4 @@
-package com.toolbox.modbus.tcplistener;
+package com.toolbox.modbus.modbusapi;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
