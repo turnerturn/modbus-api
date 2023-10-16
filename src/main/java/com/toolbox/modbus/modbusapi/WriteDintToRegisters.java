@@ -1,15 +1,11 @@
 package com.toolbox.modbus.modbusapi;
 
-import java.util.Arrays;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import net.wimpi.modbus.procimg.Register;
-import net.wimpi.modbus.util.ModbusUtil;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,28 +21,19 @@ public class WriteDintToRegisters extends ModbusCommandHandler {
 
     @Override
     public ModbusCommandResponse execute(ModbusCommand command) {
-        int dintRegisterCount = 2;
         ModbusCommandResponse response = new ModbusCommandResponse();
         response.setCommandType(command.getCommandType());
         response.setRegisterOffset(command.getRegisterOffset());
-        response.setRegisterCount(command.getRegisterCount());
+        response.setRegisterCount(2);
         response.setStatusCode(HttpStatus.OK.value());
         try {
-            Long value = Long.parseLong(command.getData());
-            client.writeRegisters(command.getRegisterOffset(),  Arrays.asList(client.toRegisterArray(  ModbusUtil.intToRegisters(value.intValue()))));
-            Register[] registers =client.readRegisters(command.getRegisterOffset(), dintRegisterCount);
-            value = client.registersToLong(registers);
-            response.setData(value.toString());
+            
+            client.writeRegisters(command.getRegisterOffset(), Long.parseLong(command.getData()));
         } catch (Exception e) {
             //log.error("Failed to execute.", e);
             response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
             response.setMessage("Failed to write dint to registers.  Reason: " + e.getMessage());
         }
         return response;
-    }
-
- 
-    protected Register[] shortToRegisterArray(Short value){
-        return client.toRegisterArray(ModbusUtil.shortToRegister(value));
     }
 }

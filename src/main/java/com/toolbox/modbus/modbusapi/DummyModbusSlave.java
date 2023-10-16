@@ -8,6 +8,7 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import net.wimpi.modbus.ModbusCoupler;
 import net.wimpi.modbus.net.ModbusTCPListener;
@@ -15,6 +16,7 @@ import net.wimpi.modbus.procimg.SimpleProcessImage;
 import net.wimpi.modbus.procimg.SimpleRegister;
 
 @NoArgsConstructor
+@AllArgsConstructor
 @Component
 public class DummyModbusSlave {
 
@@ -24,9 +26,7 @@ public class DummyModbusSlave {
     // Modbus.DEFAULT_PORT = 502
     @Value("${modbus.port:9001}")
     private Integer port;
-    @PostConstruct
-    public void postConstruct() throws UnknownHostException {
-
+    public void init() throws UnknownHostException{
         // Create a process image for the slave
         SimpleProcessImage spi = new SimpleProcessImage();
         for(int i = 0; i < 40001;i++){
@@ -46,5 +46,9 @@ public class DummyModbusSlave {
 
         // Start the listener
         listener.start();
+    }   
+     @PostConstruct
+    protected void postConstruct() throws UnknownHostException {
+        init();
     }
 }

@@ -3,13 +3,13 @@ package com.toolbox.modbus.modbusapi;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 
 import lombok.extern.slf4j.Slf4j;
 import net.wimpi.modbus.facade.ModbusTCPMaster;
@@ -17,11 +17,16 @@ import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.util.ModbusUtil;
 
+/**
+ * The ModbusClient class is used to read and write data to a Modbus device.
+ * @author mturner
+ */
 @Slf4j
 @Component
 public class ModbusClient {
-    @Autowired
-    private Toolbox toolbox;
+
+
+    public static final int MAX_REGISTERS_PER_REQUEST =124;
 
     @Value("${modbus.unitId:1}")
     private Integer unitId;
@@ -50,27 +55,80 @@ public class ModbusClient {
         }
     }
 
-    public void writeRegisters(Integer offset, List<Register> registerList) throws Exception {
-       
+    public void writeRegisters(Integer offset, Register[] registers) throws Exception {
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
             m.connect();
-            List<List<Register>> listOfChunkedRegisters = chunkRegisters(registerList, 125);
-            for(List<Register> chunkedRegisterList : listOfChunkedRegisters){
-                Register[] registers = chunkedRegisterList.toArray(new Register[chunkedRegisterList.size()]);
                 m.writeMultipleRegisters(offset, registers);
-                offset += registers.length;
-            }
         }
     }
+     public void writeRegisters(Integer offset, List<Register> registers) throws Exception {
+        writeRegisters(offset, registers.toArray(new Register[registers.size()]));
+     }
+    public void writeRegisters(Integer offset, String value) throws Exception {
+            writeRegisters(offset, toRegisters(value));
+    }
+     public void writeRegisters(Integer offset, Long value) throws Exception {
+            writeRegisters(offset,toRegisters(value));
+    }
+    /**
+     * Writes a value to the high byte of a Modbus register at the specified offset.  The low byte of this register will be persisted.
+     * 
+     * @param offset the offset of the register to write to
+     * @param value the value to write to the high byte of the register
+     * @throws Exception if there is an error reading or writing the register
+     */
+    public void writeHighByteToRegister(Integer offset, String value) throws Exception {
+        writeHighByteToRegister(offset, toByte(value));
+    }
+    public void writeHighByteToRegister(Integer offset, byte value) throws Exception {
+            Register register = readRegisters(offset, 1)[0];
+            //we preserve the high byte of this register
+           byte lowByte = ModbusUtil.lowByte(register.getValue());
+            byte highByte = value;
+            writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
+    }
+        /**
+     * Writes a value to the low byte of a Modbus register at the specified offset.  The high byte of this register will be persisted.
+     * 
+     * @param offset the offset of the register to write to
+     * @param value the value to write to the low byte of the register
+     * @throws Exception if there is an error reading or writing the register
+     */
+    public void writeLowByteToRegister(Integer offset, String value) throws Exception {
+        writeLowByteToRegister(offset, toByte(value));
+    }
+    public void writeLowByteToRegister(Integer offset, byte value) throws Exception {
+            Register register = readRegisters(offset, 1)[0];
+            //we preserve the high byte of this register
+            byte highByte = ModbusUtil.hiByte(register.getValue());
+            byte lowByte = value;
+            writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
+    }
 
+    public String readStringFromRegisters(int registerOffset, int registerCount) throws Exception   {
+        int remainingRegisterCount = registerCount;
+       
+        StringBuilder sb = new StringBuilder();
+        while(remainingRegisterCount > 0){
+            registerCount = (registerCount > 125)? 125 : registerCount;
+            remainingRegisterCount -= registerCount;
+            sb.append(toString(readRegisters(registerOffset, registerCount)));       
+            registerOffset += registerCount;
+        }
+        return sb.toString();
+    }
+    public Long readLongFromRegisters(int offset) throws Exception   {
+        Register[] registers= readRegisters(offset, 2);
+        return toLong(registers);
+    }
     /**
      * Converts a byte array to an array of SimpleRegister.
      *
      * @param byteArray The input byte array.
      * @return An array of SimpleRegister.
      */
-    public Register[] toRegisterArray(byte[] bytes) {
+    public Register[] toRegisters(byte[] bytes) {
         // Calculate the length of the Register array
         int length = bytes.length / 2;
 
@@ -86,43 +144,33 @@ public class ModbusClient {
         return registerArray;
     }
 
+    public  long toLong(Register[] dintRegisters) {
+        // Combine the two 16-bit registers into a 32-bit integer
+        int combinedInt = (dintRegisters[0].getValue() << 16) | (dintRegisters[1].getValue() & 0xFFFF);
+
+        // Convert the 32-bit integer to a long (if needed)
+        long combinedLong = combinedInt & 0xFFFFFFFFL;
+
+        return combinedLong;
+    }
 
 /**
- * Converts an array of registers into a long value.  Dint datatype requires 2 registers per long value.
- * @param registers
- * @return
- * @throws Exception
+ * Converts a long value into an array of two Modbus registers.
+ *
+ * @param longValue the long value to convert
+ * @return an array of two Modbus registers
  */
-    public long registersToLong(Register[] registers) throws Exception {
-        Register register1 = new SimpleRegister(registers[0].getValue());
-        Register register2 = new SimpleRegister(registers[1].getValue());
-      // Create a ByteBuffer to hold the two 16-bit registers
-      ByteBuffer buffer = ByteBuffer.allocate(4);
+public Register[] toRegisters(long longValue) {
+    // Extract the upper 16 bits and lower 16 bits from the long value
+    int upperBits = (int) (longValue >> 16);
+    int lowerBits = (int) longValue;
 
-      // Put the two registers into the ByteBuffer as two shorts
-      buffer.putShort( register1.toShort());
-      buffer.putShort(register2.toShort());
+    // Create an array to hold the two Modbus registers
+    Register[] registers = {new SimpleRegister(upperBits), new SimpleRegister(lowerBits)};
 
-              // Flip the ByteBuffer to read it
-              buffer.flip();
-                // Retrieve the combined long value
-              return buffer.getInt() & 0xFFFFFFFFL;
-    }
-/**
- * Converts a long value into an array of registers representing a 'dint' dataTyoe.  Dint datatype requires 2 registers per long value.
- * @param value
- * @return
- */
-    public Register[] longToRegisters(Long value) {
+    return registers;
+}
 
-        int register1 = (int) ((value >> 48) & 0xFFFF); // Most significant 16 bits
-        int register2 = (int) ((value >> 32) & 0xFFFF); // Next 16 bits
-        int register3 = (int) ((value >> 16) & 0xFFFF); // Next 16 bits
-        int register4 = (int) (value & 0xFFFF); // Least significant 16 bits
-        Register[] registers = { new SimpleRegister(register1), new SimpleRegister(register2),
-                new SimpleRegister(register3), new SimpleRegister(register4) };
-        return registers;
-    }
 
 
 /**
@@ -130,18 +178,17 @@ public class ModbusClient {
  * @param input
  * @return
  */
-    protected  byte convertStringToByte(String input) {
+    protected  byte toByte(String input) throws IllegalArgumentException {
+        String regex = "[01]{8}";
+        Assert.isTrue(input.matches(regex), "String value of byte must consist of 8 characters, each of which is either '0' or '1'");
         byte result = 0;
 
       for (int i = 0; i < 8; i++) {
             char c = input.charAt(i);
             if (c == '1') {
                 result |= (1 << (i));
-            } else if (c != '0') {
-                throw new IllegalArgumentException("Input string contains invalid characters: " + input);
             }
         }
-
         return result;
     }
 /**
@@ -149,7 +196,7 @@ public class ModbusClient {
  * @param inputByte
  * @return
  */
-    public  String convertByteToString(byte inputByte) {
+    public  String toString(byte inputByte) {
         StringBuilder stringBuilder = new StringBuilder(8);
 
         // Iterate through each bit in the byte
@@ -167,7 +214,7 @@ public class ModbusClient {
      * Converts a string value into an array of registers.
      * 
      * 
-     * The stringToRegisterArray method takes a string value as input,
+     * The toRegisters method takes a string value as input,
      * converts the string value into a byte array, and then creates an array of
      * registers consiting of the string's byte array.
      * 
@@ -182,7 +229,7 @@ public class ModbusClient {
      * @param value the string value to be converted
      * @return a holding register array representing the string value
      */
-    protected Register[] stringToRegisterArray(String value) {
+    protected Register[] toRegisters(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.US_ASCII);
 
         // This avoids an index out of range exception when the bytes length is odd.
@@ -207,7 +254,7 @@ public class ModbusClient {
      * @return
      * @throws Exception
      */
-    public String registersArrayToString(Register[] registers) throws Exception {
+    public String toString(Register[] registers) throws Exception {
         //log.trace("toString(...)");
         Objects.requireNonNull(registers, "registers is null");
         ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
@@ -219,28 +266,6 @@ public class ModbusClient {
         return result;
     }
 
-    /**
-     * The chunkRegisters function takes a list of items and the desired chunk size as input.
-     * It then iterates through the list and creates a new list for each chunk of items.
-     * 
-     * 
-     * @param list      The list to be chunked
-     * @param chunkSize The desired chunk size
-     * @return An ArrayList containing all the chunked lists.
-     */
-    public List<List<Register>> chunkRegisters(List<Register> registers, int chunkSize) {
-        List<List<Register>> chunkedList = new ArrayList<>();
-
-        int totalSize = registers.size();
-
-        for (int i = 0; i < totalSize; i += chunkSize) {
-            int end = Math.min(i + chunkSize, totalSize);
-            List<Register> chunk = registers.subList(i, end);
-            chunkedList.add(new ArrayList<>(chunk));
-        }
-
-        return chunkedList;
-    }
 /**
  * This class is used to create a ModbusTCPMaster object that implements the AutoCloseable interface.
  * @author mturner
@@ -259,4 +284,6 @@ public class ModbusClient {
             }
         }
     }
+
+
 }

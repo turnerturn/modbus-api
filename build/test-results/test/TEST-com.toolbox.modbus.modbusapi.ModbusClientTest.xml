@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.toolbox.modbus.modbusapi.ModbusClientTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2023-10-16T01:26:40" hostname="Matts-MBP.attlocal.net" time="0.017">
+  <properties/>
+  <testcase name="testWhenReadingAndWritingStringRegistersWithEvenLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.01"/>
+  <testcase name="testWhenReadingAndWritingStringRegistersWithOddLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
+  <testcase name="testWhenConvertingStringToByte()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
+  <testcase name="testWhenConvertingByteToString()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
+  <system-out><![CDATA[2023-10-15T20:26:40.699-05:00  INFO 60530 --- [    Test worker] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.toolbox.modbus.modbusapi.ModbusClientTest]: ModbusClientTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2023-10-15T20:26:40.700-05:00  INFO 60530 --- [    Test worker] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.toolbox.modbus.modbusapi.ModbusApiApplication for test class com.toolbox.modbus.modbusapi.ModbusClientTest
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

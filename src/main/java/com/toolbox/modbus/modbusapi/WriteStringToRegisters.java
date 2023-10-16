@@ -31,7 +31,7 @@ private Toolbox     toolbox;
         response.setRegisterCount(command.getRegisterCount());
         response.setStatusCode(HttpStatus.OK.value());
         try {
-            Register[] registers = client.stringToRegisterArray(command.getData());
+            Register[] registers = client.toRegisters(command.getData());
             client.writeRegisters(command.getRegisterOffset(), Arrays.asList(registers));
             response.setData(command.getData());
         } catch (Exception e) {

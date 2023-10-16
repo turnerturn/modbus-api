@@ -1,9 +1,5 @@
 package com.toolbox.modbus.modbusapi;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -13,9 +9,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import net.wimpi.modbus.procimg.Register;
-import net.wimpi.modbus.procimg.SimpleRegister;
-import net.wimpi.modbus.util.ModbusUtil;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -46,15 +39,8 @@ public class ReadStringFromRegisters extends ModbusCommandHandler {
         response.setRegisterCount(command.getRegisterCount());
         response.setStatusCode(HttpStatus.OK.value());
         try {
-        int lastRegisterOffset = command.getRegisterOffset() + command.getRegisterCount();
-        int tmpRegisterOffset = command.getRegisterOffset();
-        int tmpRegisterCount = (command.getRegisterCount() > 125)? 125 : command.getRegisterCount();
-        StringBuilder sb = new StringBuilder();
-        while(tmpRegisterOffset + tmpRegisterCount <= lastRegisterOffset){
-           sb.append(registersArrayToString(client.readRegisters(tmpRegisterOffset, tmpRegisterCount)));       
-            tmpRegisterOffset += tmpRegisterCount;
-        }
-        response.setData(sb.toString());
+          String data = client.readStringFromRegisters( command.getRegisterOffset(), command.getRegisterCount());
+          response.setData(data);
         } catch (Exception e) {
             //log.error("Failed to execute.",e);
             response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
@@ -63,15 +49,5 @@ public class ReadStringFromRegisters extends ModbusCommandHandler {
           return response; 
     }
 
-    public String registersArrayToString(Register[] registers) throws Exception {
-        //log.trace("toString(...)");
-        Objects.requireNonNull(registers, "registers is null");
-        ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
-        for (Register register : registers) {
-            byteBuffer.putShort(ModbusUtil.registerToShort(new SimpleRegister(register.getValue()).toBytes()));
-        }
-        String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
-        //log.debug("Registers was converted to string.  Value: {}", result);
-        return result;
-    }
+
 }

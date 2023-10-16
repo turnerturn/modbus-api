@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
-import net.wimpi.modbus.procimg.Register;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,15 +21,13 @@ public class ReadDintFromRegisters extends ModbusCommandHandler {
 
     @Override
     public ModbusCommandResponse execute(ModbusCommand command) {
-        int dintRegisterCount = 2;
         ModbusCommandResponse response = new ModbusCommandResponse();
         response.setCommandType(command.getCommandType());
         response.setRegisterOffset(command.getRegisterOffset());
-        response.setRegisterCount(dintRegisterCount);
+        response.setRegisterCount(2);
         response.setStatusCode(HttpStatus.OK.value());
         try {
-           Register[] registers =client.readRegisters(command.getRegisterOffset(), dintRegisterCount);
-            Long value = client.registersToLong(registers);
+           Long value = client.readLongFromRegisters(command.getRegisterOffset());
             response.setData(value.toString());
 
         } catch (Exception e) {

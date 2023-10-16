@@ -34,7 +34,7 @@ public class WriteLowByteToRegisters extends ModbusCommandHandler {
         try {
             Register[] registers = client.readRegisters(command.getRegisterOffset(), 1);
           byte highByte =  ModbusUtil.hiByte(registers[0].getValue());
-          byte lowByte  = client.convertStringToByte(command.getData());
+          byte lowByte  = client.toByte(command.getData());
 
           client.writeRegisters(command.getRegisterOffset(), Arrays.asList(new SimpleRegister(highByte, lowByte)));
         
