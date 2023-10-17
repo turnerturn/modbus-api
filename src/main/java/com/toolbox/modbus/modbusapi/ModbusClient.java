@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -38,16 +39,42 @@ public class ModbusClient {
     // Modbus.DEFAULT_PORT = 502
     @Value("${modbus.port:9001}")
     private Integer port;
-
+    @Autowired
+    private  Toolbox toolbox;
     public ModbusClient() {
     }
 
-    public ModbusClient(Integer unitId, String host, Integer port) {
+    public ModbusClient(Integer unitId, String host, Integer port,Toolbox toolbox) {
         this.unitId = unitId;
         this.host = host;
         this.port = port;
+        this.toolbox=toolbox;
     }
+    public List<ModbusCommandResponse> processClearRequests(List<ModbusCommandRequest> requests) throws Exception {
+        List<ModbusCommandResponse> responses = new ArrayList<>();
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(InetAddress.getByName(host).getHostName(), port)) {
+                     m.connect();
+            for (ModbusCommandRequest request : requests) {
+                ModbusCommandResponse response = new ModbusCommandResponse();
+                                response.setOffset(request.getOffset());
+                response.setCount(request.getCount());
+                response.setDataType(request.getDataType());
+                response.setStatusCode(200);
+                   try {
+                     List<Register> registers= new ArrayList<>();
+                     toolbox.fillList(registers, new SimpleRegister(0), request.getCount());
+                    m.writeMultipleRegisters(request.getOffset(), registers.toArray(new Register[registers.size()]));
+                   } catch (Exception e) {
+                    log.warn("Failed to process modbus register request.", e);
+                    response.setStatusCode(500);
+                    response.setMessage("Failed to process modbus register request.");
+                }
 
+                    responses.add(response);
+            }
+          return responses;
+        }
+    }
     public List<ModbusCommandResponse> processReadRequests(List<ModbusCommandRequest> requests) throws Exception {
         List<ModbusCommandResponse> responses = new ArrayList<>();
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
@@ -74,12 +101,13 @@ public class ModbusClient {
                     if ("high-byte".equalsIgnoreCase(request.getDataType())) {
                        response.setData(toString(ModbusUtil.hiByte(registers[0].getValue())));
                     }
-                    responses.add(response);
                 } catch (Exception e) {
                     log.warn("Failed to process modbus register request.", e);
                     response.setStatusCode(500);
                     response.setMessage("Failed to process modbus register request.");
                 }
+
+                    responses.add(response);
             }
         }
         return responses;
@@ -117,12 +145,13 @@ public class ModbusClient {
                         registers[0] = new SimpleRegister(highByte, lowByte);
                     }
                     m.writeMultipleRegisters(request.getOffset(), registers);
-                    responses.add(response);
                 } catch (Exception e) {
                     log.warn("Failed to process modbus register request.", e);
                     response.setStatusCode(500);
                     response.setMessage("Failed to process modbus register request.");
                 }
+
+                    responses.add(response);
             }
         }
         return responses;
@@ -400,10 +429,7 @@ public class ModbusClient {
         // log.debug("Registers was converted to string. Value: {}", result);
         return result;
     }
-    // TODO clearRegisters(....)
-    // TODO test write and read of dint.
-    // TODO process(List<RegisterRequest> requests)
-
+    
     /**
      * This class is used to create a ModbusTCPMaster object that implements the
      * AutoCloseable interface.
@@ -424,5 +450,4 @@ public class ModbusClient {
             }
         }
     }
-
 }

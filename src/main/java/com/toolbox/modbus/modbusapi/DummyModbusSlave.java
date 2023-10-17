@@ -20,10 +20,9 @@ import net.wimpi.modbus.procimg.SimpleRegister;
 @Component
 public class DummyModbusSlave {
 
-    // "192.168.1.197"; // Modbus device IP address
+   
     @Value("${modbus.host:127.0.0.1}")
     private String host;
-    // Modbus.DEFAULT_PORT = 502
     @Value("${modbus.port:9001}")
     private Integer port;
     public void init() throws UnknownHostException{
