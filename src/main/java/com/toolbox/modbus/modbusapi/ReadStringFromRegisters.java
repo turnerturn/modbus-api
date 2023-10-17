@@ -30,10 +30,10 @@ public class ReadStringFromRegisters extends ModbusCommandHandler {
         private Integer count;
     }
     @Override
-    public ModbusCommandResponse execute(ModbusCommand command)   {
+    public CommandResponse execute(ModbusCommand command)   {
 
         
-        ModbusCommandResponse response = new ModbusCommandResponse();
+        CommandResponse response = new CommandResponse();
         response.setCommandType(command.getCommandType());
         response.setRegisterOffset(command.getRegisterOffset());
         response.setRegisterCount(command.getRegisterCount());

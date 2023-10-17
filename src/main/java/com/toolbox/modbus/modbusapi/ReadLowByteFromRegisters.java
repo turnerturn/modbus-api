@@ -21,8 +21,8 @@ public class ReadLowByteFromRegisters extends ModbusCommandHandler {
         return ModbusCommandType.READ_LOW_BYTE_FROM_REGISTERS.equals(command.getCommandType());
     }
     @Override
-    public ModbusCommandResponse execute(ModbusCommand command) {
-        ModbusCommandResponse response = new ModbusCommandResponse();
+    public CommandResponse execute(ModbusCommand command) {
+        CommandResponse response = new CommandResponse();
         response.setCommandType(command.getCommandType());
         response.setRegisterOffset(command.getRegisterOffset());
         response.setRegisterCount(command.getRegisterCount());

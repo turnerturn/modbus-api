@@ -1,21 +1,29 @@
 package com.toolbox.modbus.modbusapi;
 
-import java.util.List;
-
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import net.wimpi.modbus.procimg.Register;
+import lombok.ToString;
 
-@AllArgsConstructor
 @Builder
-public class ModbusCommand {
+@ToString
+public class CommandResponse {
     private ModbusCommandType commandType;
     private Integer registerOffset;
     private Integer registerCount;
-    private List<Register> registers;
     private String data;
-    public ModbusCommand () {}
-
+    private Integer statusCode;
+    private String message;
+    //constructor
+    public CommandResponse() {
+    }
+    public CommandResponse(ModbusCommandType commandType, Integer registerOffset, Integer registerCount, String data, Integer statusCode, String message) {
+        super();
+        this.commandType = commandType;
+        this.registerOffset = registerOffset;
+        this.registerCount = registerCount;
+        this.data = data;
+        this.statusCode = statusCode;
+        this.message = message;
+    }
     //getters and setters
     public ModbusCommandType getCommandType() {
         return commandType;
@@ -41,16 +49,17 @@ public class ModbusCommand {
     public void setData(String data) {
         this.data = data;
     }
-    public List<Register> getRegisters() {
-        return registers;
+    public Integer getStatusCode() {
+        return statusCode;
     }
-    public void setRegisters(List<Register> registers) {
-        this.registers = registers;
+    public void setStatusCode(Integer statusCode) {
+        this.statusCode = statusCode;
     }
-    @Override
-    public String toString() {
-        return "ModbusCommand [commandType=" + commandType + ", registerOffset=" + registerOffset + ", registerCount="
-                + registerCount + ", data=" + data + ", registers=" + registers + "]";
+    public String getMessage() {
+        return message;
     }
+    public void setMessage(String message) {
+        this.message = message;
+    }
+    
 }
-

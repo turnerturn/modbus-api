@@ -7,13 +7,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
-
 @RestController
 public class ModbusController {
     @Autowired
@@ -22,7 +15,7 @@ public class ModbusController {
     private ModbusApiClient modbusApiClient;
 
     @PostMapping("/api/modbus/registers/read")
-    public ModbusCommandResponse read(@RequestBody ModbusCommandRequest dto) throws Exception {
+    public CommandResponse read(@RequestBody ModbusCommandRequest dto) throws Exception {
         ModbusCommand command = ModbusCommand.builder().registerOffset(dto.getOffset()).registerCount(dto.getCount())
                 .data(dto.getData()).build();
         if ("string".equalsIgnoreCase(dto.getDataType())) {
@@ -42,7 +35,7 @@ public class ModbusController {
     }
 
     @PostMapping("/api/modbus/registers/clear")
-    public ModbusCommandResponse clear(@RequestBody ModbusCommandRequest dto) throws Exception {
+    public CommandResponse clear(@RequestBody ModbusCommandRequest dto) throws Exception {
         ModbusCommand command = ModbusCommand.builder().registerOffset(dto.getOffset()).registerCount(dto.getCount())
                 .data(dto.getData()).build();
         command.setCommandType(ModbusCommandType.CLEAR_MEMORY_FROM_REGISTERS);
@@ -51,7 +44,7 @@ public class ModbusController {
     }
 
     @PostMapping("/api/modbus/registers/write")
-    public ModbusCommandResponse write(@RequestBody ModbusCommandRequest dto) throws Exception {
+    public CommandResponse write(@RequestBody ModbusCommandRequest dto) throws Exception {
         ModbusCommand command = ModbusCommand.builder().registerOffset(dto.getOffset()).registerCount(dto.getCount())
                 .data(dto.getData()).build();
         if ("string".equalsIgnoreCase(dto.getDataType())) {
@@ -70,17 +63,6 @@ public class ModbusController {
                 .orElseThrow(() -> new Exception("Failed to write modbus registers."));
     }
 
+
 }
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-@ToString
-class ModbusCommandRequest {
-    private Integer offset;
-    private Integer count;
-    private String data;
-    private String dataType;
-}

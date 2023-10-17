@@ -14,11 +14,9 @@ import lombok.ToString;
 @NoArgsConstructor
 @Builder
 @ToString
-public class ModbusCommandResponse {
+public class ModbusCommandRequest {
     private Integer offset;
     private Integer count;
     private String data;
     private String dataType;
-    private Integer statusCode;
-    private String message;
 }

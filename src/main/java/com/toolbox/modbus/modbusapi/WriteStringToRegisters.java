@@ -24,8 +24,8 @@ private Toolbox     toolbox;
     }
 
     @Override
-    public ModbusCommandResponse execute(ModbusCommand command) {
-        ModbusCommandResponse response = new ModbusCommandResponse();
+    public CommandResponse execute(ModbusCommand command) {
+        CommandResponse response = new CommandResponse();
         response.setCommandType(command.getCommandType());
         response.setRegisterOffset(command.getRegisterOffset());
         response.setRegisterCount(command.getRegisterCount());

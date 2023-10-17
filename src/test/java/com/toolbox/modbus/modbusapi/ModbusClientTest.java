@@ -138,7 +138,7 @@ public class ModbusClientTest {
         Register[] registers = {new SimpleRegister(initialHighByte, expectedLowByte)};
         modbusClient.writeRegisters(1, registers);
 
-        modbusClient.writeHighByteToRegister(1, expectedHighByte);
+        modbusClient.writeHighByteRegister(1, expectedHighByte);
         Register registerAfterWrite = modbusClient.readRegisters(1, 1)[0];
 
         Assertions.assertEquals(expectedHighByte, ModbusUtil.hiByte(registerAfterWrite.getValue()));
@@ -153,7 +153,7 @@ public class ModbusClientTest {
         Register[] registers = {new SimpleRegister(expectedHighByte, initialLowByte)};
         modbusClient.writeRegisters(1, registers);
 
-        modbusClient.writeLowByteToRegister(1, expectedLowByte);
+        modbusClient.writeLowByteRegister(1, expectedLowByte);
         Register registerAfterWrite = modbusClient.readRegisters(1, 1)[0];
 
         Assertions.assertEquals(expectedHighByte, ModbusUtil.hiByte(registerAfterWrite.getValue()));
