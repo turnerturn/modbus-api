@@ -3,10 +3,14 @@ package com.toolbox.modbus.modbusapi;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,52 +33,50 @@ import net.wimpi.modbus.util.ModbusUtil;
 public class ModbusClient {
 
     public static final int MAX_REGISTERS_PER_REQUEST = 124;
-
-    @Value("${modbus.unitId:1}")
-    private Integer unitId;
-
-    // "192.168.1.197"; // Modbus device IP ip
     @Value("${modbus.host:127.0.0.1}")
     private String host;
     // Modbus.DEFAULT_PORT = 502
     @Value("${modbus.port:9001}")
     private Integer port;
     @Autowired
-    private  Toolbox toolbox;
+    private Toolbox toolbox;
+
     public ModbusClient() {
     }
 
-    public ModbusClient(Integer unitId, String host, Integer port,Toolbox toolbox) {
-        this.unitId = unitId;
+    public ModbusClient( String host, Integer port, Toolbox toolbox) {
         this.host = host;
         this.port = port;
-        this.toolbox=toolbox;
+        this.toolbox = toolbox;
     }
+ 
     public List<ModbusCommandResponse> processClearRequests(List<ModbusCommandRequest> requests) throws Exception {
         List<ModbusCommandResponse> responses = new ArrayList<>();
-        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(InetAddress.getByName(host).getHostName(), port)) {
-                     m.connect();
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
+                InetAddress.getByName(host).getHostName(), port)) {
+            m.connect();
             for (ModbusCommandRequest request : requests) {
                 ModbusCommandResponse response = new ModbusCommandResponse();
-                                response.setOffset(request.getOffset());
+                response.setOffset(request.getOffset());
                 response.setCount(request.getCount());
                 response.setDataType(request.getDataType());
                 response.setStatusCode(200);
-                   try {
-                     List<Register> registers= new ArrayList<>();
-                     toolbox.fillList(registers, new SimpleRegister(0), request.getCount());
+                try {
+                    List<Register> registers = new ArrayList<>();
+                    toolbox.fillList(registers, new SimpleRegister(0), request.getCount());
                     m.writeMultipleRegisters(request.getOffset(), registers.toArray(new Register[registers.size()]));
-                   } catch (Exception e) {
+                } catch (Exception e) {
                     log.warn("Failed to process modbus register request.", e);
                     response.setStatusCode(500);
                     response.setMessage("Failed to process modbus register request.");
                 }
 
-                    responses.add(response);
+                responses.add(response);
             }
-          return responses;
+            return responses;
         }
     }
+
     public List<ModbusCommandResponse> processReadRequests(List<ModbusCommandRequest> requests) throws Exception {
         List<ModbusCommandResponse> responses = new ArrayList<>();
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
@@ -96,10 +98,10 @@ public class ModbusClient {
                         response.setData(String.valueOf(toLong(registers)));
                     }
                     if ("low-byte".equalsIgnoreCase(request.getDataType())) {
-                          response.setData(toString(ModbusUtil.lowByte(registers[0].getValue())));
+                        response.setData(toString(ModbusUtil.lowByte(registers[0].getValue())));
                     }
                     if ("high-byte".equalsIgnoreCase(request.getDataType())) {
-                       response.setData(toString(ModbusUtil.hiByte(registers[0].getValue())));
+                        response.setData(toString(ModbusUtil.hiByte(registers[0].getValue())));
                     }
                 } catch (Exception e) {
                     log.warn("Failed to process modbus register request.", e);
@@ -107,7 +109,7 @@ public class ModbusClient {
                     response.setMessage("Failed to process modbus register request.");
                 }
 
-                    responses.add(response);
+                responses.add(response);
             }
         }
         return responses;
@@ -125,23 +127,23 @@ public class ModbusClient {
                 response.setDataType(request.getDataType());
                 response.setStatusCode(200);
                 try {
-                    Register[] registers  = null;
+                    Register[] registers = null;
                     if ("string".equalsIgnoreCase(request.getDataType())) {
-                       registers= toRegisters(request.getData());
+                        registers = toRegisters(request.getData());
                     }
                     if ("dint".equalsIgnoreCase(request.getDataType())) {
-                          registers=  toRegisters(Long.parseLong(request.getData()));
+                        registers = toRegisters(Long.parseLong(request.getData()));
                     }
                     if ("low-byte".equalsIgnoreCase(request.getDataType())) {
                         registers = m.readMultipleRegisters(request.getOffset(), 1);
                         byte lowByte = toByte(request.getData());
-                        byte highByte= ModbusUtil.hiByte(registers[0].getValue());
+                        byte highByte = ModbusUtil.hiByte(registers[0].getValue());
                         registers[0] = new SimpleRegister(highByte, lowByte);
                     }
                     if ("high-byte".equalsIgnoreCase(request.getDataType())) {
                         registers = m.readMultipleRegisters(request.getOffset(), 1);
                         byte highByte = toByte(request.getData());
-                        byte lowByte= ModbusUtil.lowByte(registers[0].getValue());
+                        byte lowByte = ModbusUtil.lowByte(registers[0].getValue());
                         registers[0] = new SimpleRegister(highByte, lowByte);
                     }
                     m.writeMultipleRegisters(request.getOffset(), registers);
@@ -151,22 +153,57 @@ public class ModbusClient {
                     response.setMessage("Failed to process modbus register request.");
                 }
 
-                    responses.add(response);
+                responses.add(response);
             }
         }
         return responses;
     }
+
+    public String poll(int timeout, Integer offset, Integer count, String... values) throws TimeoutException, ModbusException{
+        LocalTime expiryTime = LocalTime.now(ZoneId.systemDefault()).plusSeconds(timeout);
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
+                InetAddress.getByName(host).getHostName(), port)) {
+            m.connect();
+            while (true) {
+                if (LocalTime.now(ZoneId.systemDefault()).isAfter(expiryTime)) {
+                    throw new TimeoutException("Polling has timed out after " + timeout + " seconds.");
+                }
+                String readValue = Optional.ofNullable(toString(m.readMultipleRegisters(offset, count))).map(str -> str.trim()).orElse("");
+                // true if we read a value that matches a value in our list of values to poll
+                // for.
+                if(values != null && Arrays.asList(values).stream().anyMatch(val -> val.equalsIgnoreCase(readValue))) {
+                    return readValue;
+                }
+                // sleep our thread before we try again.
+                sleep(1000);
+            }
+        } catch (TimeoutException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ModbusException("Failed to poll registers for string value. ", e);
+        }
+    }
+
+    private void sleep(int milliseconds) {
+        try {
+            Thread.sleep(milliseconds);
+        } catch (InterruptedException e) {
+            log.warn("Failed to sleep thread.", e);
+        }
+    }
+
     public void clearRegisters(Integer offset, Integer count) throws ModbusException {
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
-                    m.connect();
+            m.connect();
             List<Register> registers = new ArrayList<>();
-            toolbox.fillList(registers, new SimpleRegister((byte) 0, (byte)0), count);
+            toolbox.fillList(registers, new SimpleRegister((byte) 0, (byte) 0), count);
             m.writeMultipleRegisters(offset, registers.toArray(new Register[registers.size()]));
         } catch (Exception e) {
             throw new ModbusException("Failed to clear registers. ", e);
         }
     }
+
     public Register[] readRegisters(Integer offset, Integer count) throws Exception {
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
@@ -219,6 +256,8 @@ public class ModbusClient {
         try {
             Register[] registers = readRegisters(offset, 1);
             byte highByte = ModbusUtil.hiByte(registers[0].getValue());
+            //wait half a second before our next modbus request.
+            sleep(500);
             writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
         } catch (Exception e) {
             throw new ModbusException("Failed to write low byte to registers. ", e);
@@ -242,6 +281,8 @@ public class ModbusClient {
         try {
             Register[] registers = readRegisters(offset, 1);
             byte lowByte = ModbusUtil.lowByte(registers[0].getValue());
+            //wait half a second before our next modbus request.
+            sleep(500);
             writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
         } catch (Exception e) {
             throw new ModbusException("Failed to write high byte to registers. ", e);
@@ -440,7 +481,7 @@ public class ModbusClient {
         // log.debug("Registers was converted to string. Value: {}", result);
         return result;
     }
-    
+
     /**
      * This class is used to create a ModbusTCPMaster object that implements the
      * AutoCloseable interface.

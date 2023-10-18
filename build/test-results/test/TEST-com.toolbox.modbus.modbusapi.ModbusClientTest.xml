@@ -1,31 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.toolbox.modbus.modbusapi.ModbusClientTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2023-10-18T03:08:00" hostname="Matts-MBP.attlocal.net" time="0.58">
+<testsuite name="com.toolbox.modbus.modbusapi.ModbusClientTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2023-10-18T05:23:40" hostname="Matts-MBP.attlocal.net" time="4.101">
   <properties/>
-  <testcase name="testWhenConvertingBetweenStringAndRegisters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.531"/>
+  <testcase name="testWhenConvertingBetweenStringAndRegisters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.016"/>
   <testcase name="testWhenConvertingStringToByteWhereStringHasCharacterNotEqualToOneOrZero()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
-  <testcase name="testWhenReadingAndWritingStringRegistersWithEvenLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.01"/>
+  <testcase name="testWhenReadingAndWritingStringRegistersWithEvenLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.008"/>
   <testcase name="testWhenConvertingBetweenLongAndRegisters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
-  <testcase name="testWhenConvertingStringToByteWhereStringHasMoreThanEightCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
-  <testcase name="testWhenReadingAndWritingStringRegistersWithOddLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.003"/>
-  <testcase name="givenModbusCommandWithLowByteDataTypeWhenDataIsValidThenLowByteIsWrittenToRegisterAndHighByteIsPreserved()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
-  <testcase name="testWhenConvertingStringToByteWhereStringIsValid()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
-  <testcase name="whenWritingHighByteToRegisterThenLowByteIsPersistedAndHighByteIsUpdatedWithNewValue()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
-  <testcase name="whenWritingLowByteToRegisterThenHighByteIsPersistedAndLowByteIsUpdatedWithNewValue()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.017"/>
-  <testcase name="givenModbusCommandWithHighByteDataTypeWhenDataIsValidThenHighByteIsWrittenToRegisterAndLowByteIsPreserved()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.001"/>
-  <system-out><![CDATA[22:07:59.145 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.toolbox.modbus.modbusapi.ModbusClientTest]: ModbusClientTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-22:07:59.193 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.toolbox.modbus.modbusapi.ModbusApiApplication for test class com.toolbox.modbus.modbusapi.ModbusClientTest
-
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
- :: Spring Boot ::                (v3.1.2)
-
-2023-10-17T22:07:59.410-05:00  INFO 79662 --- [    Test worker] c.t.modbus.modbusapi.ModbusClientTest    : Starting ModbusClientTest using Java 19.0.2 with PID 79662 (started by mattturner in /Users/mattturner/Projects/modbus-api)
-2023-10-17T22:07:59.411-05:00  INFO 79662 --- [    Test worker] c.t.modbus.modbusapi.ModbusClientTest    : No active profile set, falling back to 1 default profile: "default"
-2023-10-17T22:08:00.021-05:00  INFO 79662 --- [    Test worker] c.t.modbus.modbusapi.ModbusClientTest    : Started ModbusClientTest in 0.763 seconds (process running for 1.269)
-]]></system-out>
+  <testcase name="testPollingWhenExpectedValueMatchesWatchValue()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.004"/>
+  <testcase name="testWhenConvertingStringToByteWhereStringHasMoreThanEightCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.003"/>
+  <testcase name="testWhenReadingAndWritingStringRegistersWithOddLengthOfCharacters()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
+  <testcase name="testPollWhenTimeoutExpected()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="3.013"/>
+  <testcase name="testWhenConvertingStringToByteWhereStringIsValid()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.002"/>
+  <testcase name="whenWritingHighByteToRegisterThenLowByteIsPersistedAndHighByteIsUpdatedWithNewValue()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.532"/>
+  <testcase name="whenWritingLowByteToRegisterThenHighByteIsPersistedAndLowByteIsUpdatedWithNewValue()" classname="com.toolbox.modbus.modbusapi.ModbusClientTest" time="0.506"/>
+  <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

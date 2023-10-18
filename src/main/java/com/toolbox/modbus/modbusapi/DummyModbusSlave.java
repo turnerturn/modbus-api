@@ -8,23 +8,25 @@ import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import net.wimpi.modbus.ModbusCoupler;
 import net.wimpi.modbus.net.ModbusTCPListener;
 import net.wimpi.modbus.procimg.SimpleProcessImage;
 import net.wimpi.modbus.procimg.SimpleRegister;
 
-@NoArgsConstructor
-@AllArgsConstructor
+
+@RequiredArgsConstructor
 @Component
 public class DummyModbusSlave {
 
    
     @Value("${modbus.host:127.0.0.1}")
-    private String host;
+    private final String host;
     @Value("${modbus.port:9001}")
-    private Integer port;
+    private final Integer port;
+    // Create the listener with default parameters
+    private  ModbusTCPListener listener = new ModbusTCPListener(5); // 5 is the pool size
+
     public void init() throws UnknownHostException{
         // Create a process image for the slave
         SimpleProcessImage spi = new SimpleProcessImage();
@@ -37,9 +39,7 @@ public class DummyModbusSlave {
         ModbusCoupler.getReference().setMaster(false);
         ModbusCoupler.getReference().setUnitID(1);
 
-        // Create the listener with default parameters
-        ModbusTCPListener listener = new ModbusTCPListener(5); // 5 is the pool size
-
+  
         listener.setAddress(InetAddress.getByName(host));
         listener.setPort(port);
 
@@ -49,5 +49,8 @@ public class DummyModbusSlave {
      @PostConstruct
     protected void postConstruct() throws UnknownHostException {
         init();
+    }
+        public void stop()  {
+        listener.stop();
     }
 }

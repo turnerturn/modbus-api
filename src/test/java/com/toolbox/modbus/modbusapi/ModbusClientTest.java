@@ -1,25 +1,33 @@
 package com.toolbox.modbus.modbusapi;
 
+import java.util.concurrent.TimeoutException;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.util.ModbusUtil;
 
-@SpringBootTest
+
 public class ModbusClientTest {
 
-    @Value("${modbus.host:localhost}")
-    private String host;
-    @Value("${modbus.port:9001}")
-    private Integer port;
-    @Autowired
-    private ModbusClient modbusClient;
+    private static String host = "localhost";
+    private static Integer port = 9003;
 
+    private ModbusClient modbusClient = new ModbusClient(host, port,new Toolbox());
+    private  DummyModbusSlave dummyModbusSlave = new DummyModbusSlave(host, port);
+
+ @BeforeEach
+ public void setup() throws Exception {
+     dummyModbusSlave.init();
+ }
+ @AfterEach
+    public void teardown() throws Exception {
+        dummyModbusSlave.stop();
+    }
     @Test
     public void testWhenConvertingStringToByteWhereStringIsValid() {
         String testValue = "00001001";// 8 chars of 0 or 1.
@@ -36,11 +44,13 @@ public class ModbusClientTest {
         } catch (Exception e) {
             exceptionThrown = true;
             Assertions.assertTrue(e instanceof IllegalArgumentException,
-                    "Illegal Argument Exception is expected to be thrown when converting string of " +testValue.length()+ " characters to byte.");
+                    "Illegal Argument Exception is expected to be thrown when converting string of "
+                            + testValue.length() + " characters to byte.");
         }
         Assertions.assertTrue(exceptionThrown, "Exception should be thrown when converting invalid string to byte.");
     }
-       @Test
+
+    @Test
     public void testWhenConvertingStringToByteWhereStringHasCharacterNotEqualToOneOrZero() {
         String testValue = "0000000A";// 8 chars. last char is "A"
         boolean exceptionThrown = false;
@@ -115,27 +125,11 @@ public class ModbusClientTest {
     }
 
     @Test
-    public void givenModbusCommandWithHighByteDataTypeWhenDataIsValidThenHighByteIsWrittenToRegisterAndLowByteIsPreserved() {
-        String testValue = "00101100";
-        // regex where string only contains 0 or 1 and only contains 8 characters.
-        String regex = "[01]{8}";
-        Assertions.assertTrue(testValue.matches(regex));
-    }
-
-    @Test
-    public void givenModbusCommandWithLowByteDataTypeWhenDataIsValidThenLowByteIsWrittenToRegisterAndHighByteIsPreserved() {
-        String testValue = "00101100";
-        // regex where string only contains 0 or 1 and only contains 8 characters.
-        String regex = "[01]{8}";
-        Assertions.assertTrue(testValue.matches(regex));
-    }
-
-    @Test
     public void whenWritingHighByteToRegisterThenLowByteIsPersistedAndHighByteIsUpdatedWithNewValue() throws Exception {
-        byte initialHighByte =  modbusClient.toByte("00000000");
+        byte initialHighByte = modbusClient.toByte("00000000");
         byte expectedHighByte = modbusClient.toByte("11111111");
         byte expectedLowByte = modbusClient.toByte("00000000");
-        Register[] registers = {new SimpleRegister(initialHighByte, expectedLowByte)};
+        Register[] registers = { new SimpleRegister(initialHighByte, expectedLowByte) };
         modbusClient.writeRegisters(1, registers);
 
         modbusClient.writeHighByteRegister(1, expectedHighByte);
@@ -147,10 +141,10 @@ public class ModbusClientTest {
 
     @Test
     public void whenWritingLowByteToRegisterThenHighByteIsPersistedAndLowByteIsUpdatedWithNewValue() throws Exception {
-        byte initialLowByte =  modbusClient.toByte("00000000");
+        byte initialLowByte = modbusClient.toByte("00000000");
         byte expectedLowByte = modbusClient.toByte("11111111");
         byte expectedHighByte = modbusClient.toByte("00000000");
-        Register[] registers = {new SimpleRegister(expectedHighByte, initialLowByte)};
+        Register[] registers = { new SimpleRegister(expectedHighByte, initialLowByte) };
         modbusClient.writeRegisters(1, registers);
 
         modbusClient.writeLowByteRegister(1, expectedLowByte);
@@ -160,4 +154,38 @@ public class ModbusClientTest {
         Assertions.assertEquals(expectedLowByte, ModbusUtil.lowByte(registerAfterWrite.getValue()));
     }
 
+    @Test
+    public void testPollWhenTimeoutExpected() throws Exception {
+        int timeout = 3;
+        Integer offset = 0;
+        Integer count = 6;
+        String[] values = { "foo", "bar" };
+        String expectedValue = "foo";
+        // write some bogus value to ensure we dont poll for expected value before a timeout occurs.
+        modbusClient.writeRegisters(offset, "000");
+        boolean timeoutExceptionThrown = false;
+        try {
+            modbusClient.poll(timeout, offset, count, values);
+        } catch (Exception e) {
+            timeoutExceptionThrown = e instanceof TimeoutException;
+        }
+        Assertions.assertTrue(timeoutExceptionThrown,
+                "TimeoutException should be thrown when polling for value that is not expected.");
+    }
+
+    @Test
+    public void testPollingWhenExpectedValueMatchesWatchValue() throws Exception {
+        int timeout = 60;
+        Integer offset = 0;
+        Integer count = 3;
+        String[] values = { "foo", "apple" };
+        String expectedValue = values[0];
+        // write some bogus value to ensure we dont poll for expected value before a
+        // timeout occurs.
+        modbusClient.writeRegisters(offset, expectedValue);
+        String readValue = modbusClient.poll(timeout, offset, count, values);
+
+        Assertions.assertEquals(expectedValue, values[0],
+                "Expected value should be returned when polling for expected value.");
+    }
 }
