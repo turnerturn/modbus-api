@@ -156,6 +156,17 @@ public class ModbusClient {
         }
         return responses;
     }
+    public void clearRegisters(Integer offset, Integer count) throws ModbusException {
+        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
+                InetAddress.getByName(host).getHostName(), port)) {
+                    m.connect();
+            List<Register> registers = new ArrayList<>();
+            toolbox.fillList(registers, new SimpleRegister((byte) 0, (byte)0), count);
+            m.writeMultipleRegisters(offset, registers.toArray(new Register[registers.size()]));
+        } catch (Exception e) {
+            throw new ModbusException("Failed to clear registers. ", e);
+        }
+    }
     public Register[] readRegisters(Integer offset, Integer count) throws Exception {
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
