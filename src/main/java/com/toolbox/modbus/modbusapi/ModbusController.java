@@ -57,7 +57,7 @@ public class ModbusController {
 
         return response;
     }
-
+   // @PostMapping("/api/modbus/registers/clear"){{offset}}{count}
     @PostMapping("/api/modbus/registers/clear")
     public ModbusCommandResponse clear(@RequestBody ModbusCommandRequest command) throws Exception {
         ModbusCommandResponse response = new ModbusCommandResponse();

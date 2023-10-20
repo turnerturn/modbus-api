@@ -44,12 +44,12 @@ public class ModbusClient {
     public ModbusClient() {
     }
 
-    public ModbusClient( String host, Integer port, Toolbox toolbox) {
+    public ModbusClient(String host, Integer port, Toolbox toolbox) {
         this.host = host;
         this.port = port;
         this.toolbox = toolbox;
     }
- 
+
     public List<ModbusCommandResponse> processClearRequests(List<ModbusCommandRequest> requests) throws Exception {
         List<ModbusCommandResponse> responses = new ArrayList<>();
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
@@ -159,7 +159,8 @@ public class ModbusClient {
         return responses;
     }
 
-    public String poll(int timeout, Integer offset, Integer count, String... values) throws TimeoutException, ModbusException{
+    public String poll(int timeout, Integer offset, Integer count, String... values)
+            throws TimeoutException, ModbusException {
         LocalTime expiryTime = LocalTime.now(ZoneId.systemDefault()).plusSeconds(timeout);
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
@@ -168,10 +169,11 @@ public class ModbusClient {
                 if (LocalTime.now(ZoneId.systemDefault()).isAfter(expiryTime)) {
                     throw new TimeoutException("Polling has timed out after " + timeout + " seconds.");
                 }
-                String readValue = Optional.ofNullable(toString(m.readMultipleRegisters(offset, count))).map(str -> str.trim()).orElse("");
+                String readValue = Optional.ofNullable(toString(m.readMultipleRegisters(offset, count)))
+                        .map(str -> str.trim()).orElse("");
                 // true if we read a value that matches a value in our list of values to poll
                 // for.
-                if(values != null && Arrays.asList(values).stream().anyMatch(val -> val.equalsIgnoreCase(readValue))) {
+                if (values != null && Arrays.asList(values).stream().anyMatch(val -> val.equalsIgnoreCase(readValue))) {
                     return readValue;
                 }
                 // sleep our thread before we try again.
@@ -256,7 +258,7 @@ public class ModbusClient {
         try {
             Register[] registers = readRegisters(offset, 1);
             byte highByte = ModbusUtil.hiByte(registers[0].getValue());
-            //wait half a second before our next modbus request.
+            // wait half a second before our next modbus request.
             sleep(500);
             writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
         } catch (Exception e) {
@@ -281,14 +283,13 @@ public class ModbusClient {
         try {
             Register[] registers = readRegisters(offset, 1);
             byte lowByte = ModbusUtil.lowByte(registers[0].getValue());
-            //wait half a second before our next modbus request.
+            // wait half a second before our next modbus request.
             sleep(500);
             writeRegisters(offset, Arrays.asList(new SimpleRegister(highByte, lowByte)));
         } catch (Exception e) {
             throw new ModbusException("Failed to write high byte to registers. ", e);
         }
     }
-
     public String readStringFromRegisters(int registerOffset, int registerCount) throws ModbusException {
         try {
             int remainingRegisterCount = registerCount;
@@ -471,15 +472,14 @@ public class ModbusClient {
      * @throws Exception
      */
     public String toString(Register[] registers) throws Exception {
-        // log.trace("toString(...)");
         Objects.requireNonNull(registers, "registers is null");
         ByteBuffer byteBuffer = ByteBuffer.allocate(registers.length * 2);
         for (Register register : registers) {
             byteBuffer.putShort(ModbusUtil.registerToShort(new SimpleRegister(register.getValue()).toBytes()));
         }
-        String result = new String(byteBuffer.array(), StandardCharsets.US_ASCII);
-        // log.debug("Registers was converted to string. Value: {}", result);
-        return result;
+        byte[] bytes = toolbox.removeNullBytes(byteBuffer.array());
+        //replace all nul bytes of our string with empty space.  We can frequently have nul bytes trailing the end of a list of registers.
+        return new String( bytes, StandardCharsets.US_ASCII).toString();
     }
 
     /**

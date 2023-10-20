@@ -54,5 +54,26 @@ public class Toolbox {
             list.add(objectToFill);
         }
     }
+    public  byte[] removeNullBytes(byte[] originalArray) {
+        int nullCount = 0;
 
+        // Count null bytes
+        for (byte b : originalArray) {
+            if (b == 0) {
+                nullCount++;
+            }
+        }
+
+        // Create new array without null bytes
+        byte[] newArray = new byte[originalArray.length - nullCount];
+        
+        int j = 0;
+        for (byte b : originalArray) {
+            if (b != 0) {
+                newArray[j++] = b;
+            }
+        }
+        
+        return newArray;
+    }
 }

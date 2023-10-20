@@ -11,23 +11,33 @@ import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
 import net.wimpi.modbus.util.ModbusUtil;
 
-
 public class ModbusClientTest {
 
     private static String host = "localhost";
     private static Integer port = 9003;
 
-    private ModbusClient modbusClient = new ModbusClient(host, port,new Toolbox());
-    private  DummyModbusSlave dummyModbusSlave = new DummyModbusSlave(host, port);
+    private ModbusClient modbusClient = new ModbusClient(host, port, new Toolbox());
+    private DummyModbusSlave dummyModbusSlave = new DummyModbusSlave(host, port);
 
- @BeforeEach
- public void setup() throws Exception {
-     dummyModbusSlave.init();
- }
- @AfterEach
+    @BeforeEach
+    public void setup() throws Exception {
+        dummyModbusSlave.init();
+    }
+
+    @AfterEach
     public void teardown() throws Exception {
         dummyModbusSlave.stop();
     }
+    @Test
+    public void testWhenWritingString() throws Exception{
+        modbusClient.clearRegisters(1, 10);
+        String testValue = "12345";// 8 chars of 0 or 1.
+        Register[] registers = modbusClient.toRegisters(testValue);
+        modbusClient.writeRegisters(1, registers);
+        String readValue = modbusClient.readStringFromRegisters(1, 10);
+        Assertions.assertEquals(testValue, readValue.trim());
+    }
+
     @Test
     public void testWhenConvertingStringToByteWhereStringIsValid() {
         String testValue = "00001001";// 8 chars of 0 or 1.
@@ -161,7 +171,8 @@ public class ModbusClientTest {
         Integer count = 6;
         String[] values = { "foo", "bar" };
         String expectedValue = "foo";
-        // write some bogus value to ensure we dont poll for expected value before a timeout occurs.
+        // write some bogus value to ensure we dont poll for expected value before a
+        // timeout occurs.
         modbusClient.writeRegisters(offset, "000");
         boolean timeoutExceptionThrown = false;
         try {
