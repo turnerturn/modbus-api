@@ -176,7 +176,7 @@ public class ModbusClientTest {
         modbusClient.writeRegisters(offset, "000");
         boolean timeoutExceptionThrown = false;
         try {
-            modbusClient.poll(timeout, offset, count, values);
+            modbusClient.pollAndWaitForValues(timeout, offset, count, values);
         } catch (Exception e) {
             timeoutExceptionThrown = e instanceof TimeoutException;
         }
@@ -194,9 +194,8 @@ public class ModbusClientTest {
         // write some bogus value to ensure we dont poll for expected value before a
         // timeout occurs.
         modbusClient.writeRegisters(offset, expectedValue);
-        String readValue = modbusClient.poll(timeout, offset, count, values);
+        String readValue = modbusClient.pollAndWaitForValues(timeout,offset, count, values);
 
-        Assertions.assertEquals(expectedValue, values[0],
-                "Expected value should be returned when polling for expected value.");
+        Assertions.assertEquals(expectedValue, readValue,"Expected value should be returned when polling for expected value.");
     }
 }

@@ -1,73 +1,96 @@
 package com.toolbox.modbus.modbusapi;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @RestController
 public class ModbusController {
 
     @Autowired
     private ModbusClient modbusClient;
-
-    @PostMapping("/api/modbus/registers/read")
-    public ModbusCommandResponse read(@RequestBody ModbusCommandRequest command) throws Exception {
-        ModbusCommandResponse response = new ModbusCommandResponse();
-        response.setStatusCode(200);
-        response.setOffset(command.getOffset());
-        response.setCount(command.getCount());
-        response.setData(command.getData());
-        response.setDataType(command.getDataType());
-        if ("string".equalsIgnoreCase(command.getDataType())) {
-            Optional.ofNullable(modbusClient.readStringFromRegisters(command.getOffset(), command.getCount()))
-                    .ifPresent(response::setData);
-        } else if ("high-byte".equalsIgnoreCase(command.getDataType())) {
-            byte data = modbusClient.readHighByteFromRegister(command.getOffset());
-            response.setData(modbusClient.toString(data));
-        } else if ("low-byte".equalsIgnoreCase(command.getDataType())) {
-            byte data = modbusClient.readLowByteFromRegister(command.getOffset());
-            response.setData(modbusClient.toString(data));
-        } else {
-            Long data = modbusClient.readLongFromRegisters(command.getOffset());
-            response.setData(String.valueOf(data));
-        }
-        return response;
+    @DeleteMapping("/api/modbus/registers/{offset}")
+    public String clear(@PathVariable Integer offset) throws Exception {
+        modbusClient.clearRegisters(offset, 1);
+        return "ok";
+    }
+    @DeleteMapping("/api/modbus/registers/{offset}/{count}")
+    public String clear(@PathVariable Integer offset,@PathVariable Integer count) throws Exception {
+        modbusClient.clearRegisters(offset, count);
+        return "ok";
+    }
+    @PostMapping("/api/modbus/registers/{offset}")
+    public String writeString(@PathVariable Integer offset, @RequestBody String value) throws Exception {
+        modbusClient.writeRegisters(offset, value);
+        return "ok";
     }
 
-    @PostMapping("/api/modbus/registers/write")
-    public ModbusCommandResponse write(@RequestBody ModbusCommandRequest command) throws Exception {
-        ModbusCommandResponse response = new ModbusCommandResponse();
-        response.setStatusCode(200);
-        response.setOffset(command.getOffset());
-        response.setCount(command.getCount());
-        response.setData(command.getData());
-        response.setDataType(command.getDataType());
-        if ("string".equalsIgnoreCase(command.getDataType())) {
-            modbusClient.writeRegisters(command.getOffset(), command.getData());
-        } else if ("high-byte".equalsIgnoreCase(command.getDataType())) {
-            modbusClient.writeHighByteRegister(command.getOffset(), modbusClient.toByte(command.getData()));
-        } else if ("low-byte".equalsIgnoreCase(command.getDataType())) {
-            modbusClient.writeLowByteRegister(command.getOffset(), modbusClient.toByte(command.getData()));
-        } else {
-            modbusClient.writeRegisters(command.getOffset(), Long.parseLong(command.getData()));
-        }
-
-        return response;
+    @PostMapping("/api/modbus/registers/{offset}/dint")
+    public String writeDint(@PathVariable Integer offset, @RequestBody Long value) throws Exception {
+        modbusClient.writeRegisters(offset, value);
+        return "ok";
     }
-   // @PostMapping("/api/modbus/registers/clear"){{offset}}{count}
-    @PostMapping("/api/modbus/registers/clear")
-    public ModbusCommandResponse clear(@RequestBody ModbusCommandRequest command) throws Exception {
-        ModbusCommandResponse response = new ModbusCommandResponse();
-        response.setStatusCode(200);
-        response.setOffset(command.getOffset());
-        response.setCount(command.getCount());
-        response.setData(command.getData());
-        response.setDataType(command.getDataType());
 
-        modbusClient.clearRegisters(command.getOffset(), command.getCount());
-        return response;
+    @PostMapping("/api/modbus/registers/{offset}/high-byte")
+    public String writeHighByte(@PathVariable Integer offset, @RequestBody String value) throws ModbusException {
+        modbusClient.writeHighByteRegister(offset, value);
+        return "ok";
     }
+
+    @PostMapping("/api/modbus/registers/{offset}/low-byte")
+    public String writeLowByte(@PathVariable Integer offset, @RequestBody String value) throws ModbusException {
+        modbusClient.writeLowByteRegister(offset, value);
+        return "ok";
+    }
+
+    @GetMapping("/api/modbus/registers/{offset}/{count}")
+    public Optional<String> readString(@PathVariable Integer offset, @PathVariable Integer count) throws Exception {
+        return Optional.ofNullable(modbusClient.readStringFromRegisters(offset, count));
+    }
+
+    @GetMapping("/api/modbus/registers/{offset}/dint")
+    public Optional<Long> readDint(@PathVariable Integer offset) throws Exception {
+        return Optional.ofNullable(modbusClient.readLongFromRegisters(offset));
+    }
+
+    @GetMapping("/api/modbus/registers/{offset}/high-byte")
+    public Optional<String> readHighByte(@PathVariable Integer offset) throws ModbusException {
+        return Optional.ofNullable(modbusClient.readHighByteFromRegister(offset)).map(modbusClient::toString);
+    }
+
+    @GetMapping("/api/modbus/registers/{offset}/low-byte")
+    public Optional<String> readLowByte(@PathVariable Integer offset) throws ModbusException {
+        return Optional.ofNullable(modbusClient.readLowByteFromRegister(offset)).map(modbusClient::toString);
+    }
+
+    @PostMapping("/api/modbus/registers/{offset}/{count}/poll")
+    public String poll(@PathVariable Integer offset, @PathVariable Integer count,@RequestBody PollingCommand command) throws TimeoutException, ModbusException {
+       return modbusClient.pollAndWaitForValues(command.getTimeout(),offset, count, command.getTriggerValues());
+    }
+
+}
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@ToString
+class PollingCommand{
+    private Integer timeout;
+    private List<String> triggerValues;
 }

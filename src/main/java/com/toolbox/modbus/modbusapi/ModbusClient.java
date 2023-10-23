@@ -50,118 +50,16 @@ public class ModbusClient {
         this.toolbox = toolbox;
     }
 
-    public List<ModbusCommandResponse> processClearRequests(List<ModbusCommandRequest> requests) throws Exception {
-        List<ModbusCommandResponse> responses = new ArrayList<>();
-        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
-                InetAddress.getByName(host).getHostName(), port)) {
-            m.connect();
-            for (ModbusCommandRequest request : requests) {
-                ModbusCommandResponse response = new ModbusCommandResponse();
-                response.setOffset(request.getOffset());
-                response.setCount(request.getCount());
-                response.setDataType(request.getDataType());
-                response.setStatusCode(200);
-                try {
-                    List<Register> registers = new ArrayList<>();
-                    toolbox.fillList(registers, new SimpleRegister(0), request.getCount());
-                    m.writeMultipleRegisters(request.getOffset(), registers.toArray(new Register[registers.size()]));
-                } catch (Exception e) {
-                    log.warn("Failed to process modbus register request.", e);
-                    response.setStatusCode(500);
-                    response.setMessage("Failed to process modbus register request.");
-                }
-
-                responses.add(response);
-            }
-            return responses;
-        }
-    }
-
-    public List<ModbusCommandResponse> processReadRequests(List<ModbusCommandRequest> requests) throws Exception {
-        List<ModbusCommandResponse> responses = new ArrayList<>();
-        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
-                InetAddress.getByName(host).getHostName(), port)) {
-            m.connect();
-            for (ModbusCommandRequest request : requests) {
-                ModbusCommandResponse response = new ModbusCommandResponse();
-                response.setOffset(request.getOffset());
-                response.setCount(request.getCount());
-                response.setDataType(request.getDataType());
-                response.setStatusCode(200);
-                try {
-
-                    Register[] registers = m.readMultipleRegisters(request.getOffset(), request.getCount());
-                    if ("string".equalsIgnoreCase(request.getDataType())) {
-                        response.setData(toString(registers));
-                    }
-                    if ("dint".equalsIgnoreCase(request.getDataType())) {
-                        response.setData(String.valueOf(toLong(registers)));
-                    }
-                    if ("low-byte".equalsIgnoreCase(request.getDataType())) {
-                        response.setData(toString(ModbusUtil.lowByte(registers[0].getValue())));
-                    }
-                    if ("high-byte".equalsIgnoreCase(request.getDataType())) {
-                        response.setData(toString(ModbusUtil.hiByte(registers[0].getValue())));
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to process modbus register request.", e);
-                    response.setStatusCode(500);
-                    response.setMessage("Failed to process modbus register request.");
-                }
-
-                responses.add(response);
-            }
-        }
-        return responses;
-    }
-
-    public List<ModbusCommandResponse> processWriteRequests(List<ModbusCommandRequest> requests) throws Exception {
-        List<ModbusCommandResponse> responses = new ArrayList<>();
-        try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
-                InetAddress.getByName(host).getHostName(), port)) {
-            m.connect();
-            for (ModbusCommandRequest request : requests) {
-                ModbusCommandResponse response = new ModbusCommandResponse();
-                response.setOffset(request.getOffset());
-                response.setCount(request.getCount());
-                response.setDataType(request.getDataType());
-                response.setStatusCode(200);
-                try {
-                    Register[] registers = null;
-                    if ("string".equalsIgnoreCase(request.getDataType())) {
-                        registers = toRegisters(request.getData());
-                    }
-                    if ("dint".equalsIgnoreCase(request.getDataType())) {
-                        registers = toRegisters(Long.parseLong(request.getData()));
-                    }
-                    if ("low-byte".equalsIgnoreCase(request.getDataType())) {
-                        registers = m.readMultipleRegisters(request.getOffset(), 1);
-                        byte lowByte = toByte(request.getData());
-                        byte highByte = ModbusUtil.hiByte(registers[0].getValue());
-                        registers[0] = new SimpleRegister(highByte, lowByte);
-                    }
-                    if ("high-byte".equalsIgnoreCase(request.getDataType())) {
-                        registers = m.readMultipleRegisters(request.getOffset(), 1);
-                        byte highByte = toByte(request.getData());
-                        byte lowByte = ModbusUtil.lowByte(registers[0].getValue());
-                        registers[0] = new SimpleRegister(highByte, lowByte);
-                    }
-                    m.writeMultipleRegisters(request.getOffset(), registers);
-                } catch (Exception e) {
-                    log.warn("Failed to process modbus register request.", e);
-                    response.setStatusCode(500);
-                    response.setMessage("Failed to process modbus register request.");
-                }
-
-                responses.add(response);
-            }
-        }
-        return responses;
-    }
-
-    public String poll(int timeout, Integer offset, Integer count, String... values)
+    public String pollAndWaitForValues(int timeout, Integer offset, Integer count, List<String> values)
             throws TimeoutException, ModbusException {
-        LocalTime expiryTime = LocalTime.now(ZoneId.systemDefault()).plusSeconds(timeout);
+       return pollAndWaitForValues(timeout, offset, count, values.toArray(new String[values.size()]));
+    }
+
+    public String pollAndWaitForValues(int timeout, Integer offset, Integer count, String... values)
+            throws TimeoutException, ModbusException {
+        // defaults to 1 minute if null.
+        LocalTime expiryTime = LocalTime.now(ZoneId.systemDefault())
+                .plusSeconds(Optional.ofNullable(timeout).orElse(60));
         try (AutoCloseableModbusTcpMaster m = new AutoCloseableModbusTcpMaster(
                 InetAddress.getByName(host).getHostName(), port)) {
             m.connect();
@@ -290,6 +188,7 @@ public class ModbusClient {
             throw new ModbusException("Failed to write high byte to registers. ", e);
         }
     }
+
     public String readStringFromRegisters(int registerOffset, int registerCount) throws ModbusException {
         try {
             int remainingRegisterCount = registerCount;
@@ -332,6 +231,10 @@ public class ModbusClient {
         } catch (Exception e) {
             throw new ModbusException("Failed to read high byte from register. ", e);
         }
+    }
+
+    protected void publishRegisterValueToDestination(String destination, String value) {
+        // send jms message to destination with value as payload.
     }
 
     /**
@@ -478,8 +381,9 @@ public class ModbusClient {
             byteBuffer.putShort(ModbusUtil.registerToShort(new SimpleRegister(register.getValue()).toBytes()));
         }
         byte[] bytes = toolbox.removeNullBytes(byteBuffer.array());
-        //replace all nul bytes of our string with empty space.  We can frequently have nul bytes trailing the end of a list of registers.
-        return new String( bytes, StandardCharsets.US_ASCII).toString();
+        // replace all nul bytes of our string with empty space. We can frequently have
+        // nul bytes trailing the end of a list of registers.
+        return new String(bytes, StandardCharsets.US_ASCII).toString();
     }
 
     /**
